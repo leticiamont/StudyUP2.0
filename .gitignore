@@ -1,0 +1,72 @@
+# Arquivos sensíveis e chaves privadas
+backend/serviceAccountKey.json
+
+# =========================
+# Node / JavaScript / TypeScript
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.env
+.env.local
+.env.*.local
+
+# =========================
+# Expo / React Native
+# =========================
+.expo/
+.expo-shared/
+android/
+ios/
+web-build/
+dist/
+build/
+*.apk
+*.aab
+
+# =========================
+# Electron
+# =========================
+out/
+release/
+.DS_Store
+*.asar
+*.log
+
+# =========================
+# VSCode / IDEs
+# =========================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# =========================
+# OS Files
+# =========================
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# =========================
+# Python / Backend (caso tenha scripts)
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.env/
+.mypy_cache/
+.pytest_cache/
+
+# =========================
+# Misc
+# =========================
+*.zip
+*.rar
+*.tar.gz
+*.7z
