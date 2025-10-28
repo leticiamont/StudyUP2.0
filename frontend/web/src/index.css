@@ -1,0 +1,21 @@
+body {
+  margin: 0;
+  font-family: "Roboto", sans-serif;
+  background-color: #f4f6fa;
+  color: #333;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+}
