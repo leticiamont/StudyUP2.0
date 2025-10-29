@@ -1,20 +1,17 @@
 import admin from "firebase-admin";
-import { readFileSync } from "fs";
+import dotenv from "dotenv";
 
-// Lê as credenciais do arquivo serviceAccountKey.json
-const serviceAccount = JSON.parse(
-  readFileSync("./serviceAccountKey.json", "utf-8")
-);
+dotenv.config();
 
-// Inicializa o Firebase Admin (evita inicializar mais de uma vez)
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
   });
 }
 
-// Firestore
 const db = admin.firestore();
-
-// Exporta nomeado para ficar mais organizado
 export { db, admin };
