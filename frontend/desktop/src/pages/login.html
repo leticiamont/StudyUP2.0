@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyUp - Login</title>
+
+  <!-- Material Symbols Rounded -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet" />
+
+  <!-- Fonte Inter e Poppins -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- CSS separado -->
+  <link rel="stylesheet" href="../styles/login.css">
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="login-box">
+      <h1 class="logo"><span class="blue">STUDY</span><span class="green">UP</span></h1>
+
+      <form id="loginForm" class="login-form">
+        <div class="input-group">
+          <input type="email" id="email" placeholder="Email" required>
+        </div>
+
+        <div class="input-group password-group">
+          <input type="password" id="senha" placeholder="Senha" required>
+          <span id="toggleSenha" class="material-symbols-rounded">visibility</span>
+        </div>
+
+        <div class="options">
+          <label>
+            <input type="checkbox" id="lembrar">
+            Lembrar login
+          </label>
+        </div>
+
+        <button type="submit" class="btn-entrar">Entrar</button>
+
+        <p id="errorMessage" class="error-message"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Script modular -->
+  <script type="module" src="../scripts/login.js"></script>
+</body>
+</html>

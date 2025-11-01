@@ -1,6 +1,7 @@
-// preload.js
-const { contextBridge } = require('electron');
+import { contextBridge, ipcRenderer } from "electron";
 
-contextBridge.exposeInMainWorld('api', {
-  ping: () => console.log('Electron está funcionando ✅')
+contextBridge.exposeInMainWorld("electronAPI", {
+  send: (channel, data) => ipcRenderer.send(channel, data),
+  receive: (channel, func) =>
+    ipcRenderer.on(channel, (event, ...args) => func(...args)),
 });

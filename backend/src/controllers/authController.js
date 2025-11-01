@@ -1,43 +1,31 @@
-import { auth, db } from "../config/firebase.js";
+// src/controllers/authController.js
+import { admin, db } from "../config/firebase.js";
 
-export const login = async (req, res, next) => {
+export async function login(req, res, next) {
   try {
-    const { email, password } = req.body;
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: "Token não fornecido" });
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email e senha são obrigatórios" });
-    }
+    // Verifica token com Admin SDK
+    const decoded = await admin.auth().verifyIdToken(token);
+    const uid = decoded.uid;
 
-    // Autentica o usuário com Firebase Auth
-    const userRecord = await auth.getUserByEmail(email).catch(() => null);
+    // Busca documento do usuário no Firestore para pegar role e outros dados
+    const userDoc = await db.collection("users").doc(uid).get();
+    const userData = userDoc.exists ? userDoc.data() : {};
 
-    if (!userRecord) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
-    }
-
-    // Aqui você pode usar signInWithEmailAndPassword do Firebase Client
-    // (no front), ou só validar o e-mail e buscar dados adicionais no Firestore
-
-    // Busca o papel (role) do usuário no Firestore
-    const userDoc = await db.collection("users").doc(userRecord.uid).get();
-
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: "Dados do usuário não encontrados no Firestore" });
-    }
-
-    const userData = userDoc.data();
-
-    res.status(200).json({
-      message: "Login realizado com sucesso",
+    // Retorna apenas o que o front precisa (não envia privateKey etc)
+    return res.status(200).json({
+      message: "Login verificado com sucesso",
       user: {
-        uid: userRecord.uid,
-        email: userRecord.email,
-        role: userData.role || "aluno",
+        uid,
+        email: decoded.email || userData.email || null,
+        role: userData.role || "student",
         name: userData.name || "",
       },
     });
-  } catch (error) {
-    console.error("Erro no login:", error);
-    res.status(500).json({ message: "Erro interno ao realizar login" });
+  } catch (err) {
+    console.error("Auth login error:", err);
+    return res.status(401).json({ message: "Token inválido ou expirado" });
   }
-};
+}

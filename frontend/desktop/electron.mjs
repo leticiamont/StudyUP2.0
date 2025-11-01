@@ -1,37 +1,14 @@
-// electron.mjs
-import { spawn } from 'child_process';
-import { fileURLToPath } from 'url';
-import path from 'path';
-import os from 'os';
+import { app } from "electron";
+import createWindow from "./main.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+app.whenReady().then(() => {
+  createWindow();
 
-const isWindows = os.platform() === 'win32';
-
-// Caminho para o executável do Electron
-let electronPath = path.join(
-  __dirname,
-  'node_modules',
-  '.bin',
-  isWindows ? 'electron.cmd' : 'electron'
-);
-
-// Adiciona aspas se o caminho tiver espaços (corrige erro no Windows)
-if (isWindows && electronPath.includes(' ')) {
-  electronPath = `"${electronPath}"`;
-}
-
-// Caminho do arquivo principal
-const mainPath = path.join(__dirname, 'main.js');
-
-// Executa o Electron
-const child = spawn(electronPath, [mainPath], {
-  stdio: 'inherit',
-  shell: true,
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
 });
 
-// Trata erros
-child.on('error', (err) => {
-  console.error('Erro ao iniciar o Electron:', err);
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
 });

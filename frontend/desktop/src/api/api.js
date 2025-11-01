@@ -1,7 +1,12 @@
-import axios from "axios";
+const BASE_URL = "http://localhost:3000";
 
-const api = axios.create({
-  baseURL: "http://localhost:5000/api", // URL do backend
-});
+export async function post(endpoint, data) {
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
 
-export default api;
+  if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+  return await response.json();
+}
