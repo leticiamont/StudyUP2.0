@@ -1,0 +1,68 @@
+/* Estilo do Sub-menu (Abas) */
+.sub-menu {
+  display: flex;
+  border-bottom: 2px solid #EEE;
+  margin-bottom: 24px;
+}
+
+.sub-menu-item {
+  padding: 12px 20px;
+  text-decoration: none;
+  color: #888; /* Cor inativa */
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px; /* Puxa para baixo para sobrepor a borda principal */
+}
+
+.sub-menu-item.active {
+  color: #333; /* Cor ativa */
+  border-bottom-color: #007BFF; /* Cor da borda ativa (azul do menu) */
+}
+
+/* Controle de visibilidade das Abas */
+.tab-content {
+  display: none; /* Oculta todas as abas por padrão */
+}
+
+.tab-content.active {
+  display: block; /* Exibe apenas a aba ativa */
+}
+
+/* Estilos dos Filtros (baseado na imagem) */
+.filters {
+  display: flex;
+  justify-content: flex-end; /* Alinha à direita */
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.search-bar {
+  position: relative;
+  margin-right: 16px;
+}
+
+.search-bar input {
+  padding: 8px 12px 8px 32px; /* Espaço para o ícone */
+  border: 1px solid #CCC;
+  border-radius: 8px;
+  background-color: #F8F8F8;
+}
+
+.search-bar .search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #888;
+  /* (Estilize seu ícone de lupa aqui) */
+}
+
+.btn-filter {
+  padding: 8px;
+  background-color: #F8F8F8;
+  border: 1px solid #CCC;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* (Restante do CSS da tabela e paginação do seu main.css) */

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyUp Admin - Professores</title>
+  
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="../styles/professores.css">
+  
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+
+  <div id="menu-container"></div>
+  <div id="topbar-container"></div>
+
+  <main class="content">
+    
+    <div class="header">
+      <h1>Gerenciamento de Professores</h1>
+      <button id="openModalProfessorBtn" class="btn btn-primary">Adicionar Professor</button>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>NOME</th>
+            <th>EMAIL</th>
+            <th>TURMAS ATRIBUÍDAS</th>
+            <th>AÇÕES</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaProfessoresBody">
+          </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="modalProfessor" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModalProfessorBtn" class="modal-close">&times;</span>
+      <h2>Novo Professor</h2>
+      <form id="formProfessor">
+        <div class="form-group">
+          <label for="prof-name">Nome Completo</label>
+          <input type="text" id="prof-name" name="displayName" required>
+        </div>
+        <div class="form-group">
+          <label for="prof-email">Email de Login</label>
+          <input type="text" id="prof-email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label for="prof-password">Senha Provisória</label>
+          <input type="text" id="prof-password" name="password" required>
+        </div>
+        
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <script src="../scripts/professores.js" type="module"></script>
+
+</body>
+</html>

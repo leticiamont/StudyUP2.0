@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyUp Admin - Turmas e Conteúdos</title>
+  
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="../styles/turmas-conteudos.css">
+  
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+
+  <div id="menu-container"></div>
+  <div id="topbar-container"></div>
+
+  <main class="content">
+    
+    <nav class="sub-menu">
+      <a href="#" class="sub-menu-item active" data-tab="turmas">Turmas</a>
+      <a href="#" class="sub-menu-item" data-tab="planos">Planos de aula</a>
+    </nav>
+
+    <section id="tab-content-turmas" class="tab-content active">
+      <div class="header">
+        <h1>Turmas</h1>
+        <button id="openModalTurmaBtn" class="btn btn-primary">Adicionar</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>NOME DA TURMA</th>
+              <th>PROFESSOR</th>
+              <th>NÍVEL ESCOLAR</th>
+              <th>PLANO DE AULA</th>
+              <th>HORÁRIO</th>
+              <th>Nº ALUNOS</th>
+              <th>AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaTurmasBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-content-planos" class="tab-content">
+       <div class="header">
+        <h1>Planos de aula</h1>
+        <button id="openModalPlanoBtn" class="btn btn-primary">Adicionar</button>
+      </div>
+       <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ID PLANO</th>
+              <th>NOME DO PLANO</th>
+              <th>NÍVEL ESCOLAR</th>
+              <th>AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaPlanosBody">
+            </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="modalTurma" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModalTurmaBtn" class="modal-close">&times;</span>
+      <h2>Nova Turma</h2>
+      <form id="formTurma">
+        <div class="form-group">
+          <label for="turma-name">Nome da Turma (Ex: 601, 7A)</label>
+          <input type="text" id="turma-name" name="name" required>
+        </div>
+        <div class="form-group">
+          <label for="turma-teacherName">Professor(a) Responsável</label>
+          <input type="text" id="turma-teacherName" name="teacherName" required>
+        </div>
+        <div class="form-group">
+          <label for="turma-gradeLevel">Nível Escolar (Ex: 6º Ano)</label>
+          <input type="text" id="turma-gradeLevel" name="gradeLevel" required>
+        </div>
+        <div class="form-group">
+          <label for="turma-schedule">Horário (Ex: Seg 8h-10h)</label>
+          <input type="text" id="turma-schedule" name="schedule">
+        </div>
+        <div class="form-group">
+          <label for="turma-planId">Plano de Aula (ID Opcional)</label>
+          <input type="text" id="turma-planId" name="planId">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modalPlano" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModalPlanoBtn" class="modal-close">&times;</span>
+      <h2>Novo Plano de Aula (Base)</h2>
+      <form id="formPlano">
+        <div class="form-group">
+          <label for="plano-name">Nome do Plano (Ex: Matemática - 6º Ano)</label>
+          <input type="text" id="plano-name" name="name" required>
+        </div>
+        <div class="form-group">
+          <label for="plano-gradeLevel">Nível Escolar (Ex: 6º Ano)</label>
+          <input type="text" id="plano-gradeLevel" name="gradeLevel" required>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../scripts/turmas-e-conteudos.js" type="module"></script>
+
+</body>
+</html>

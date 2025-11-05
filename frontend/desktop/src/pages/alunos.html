@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyUp Admin - Alunos</title>
+  
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="../styles/alunos.css">
+  
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+
+  <div id="menu-container"></div>
+  <div id="topbar-container"></div>
+
+  <main class="content">
+    
+    <div class="header">
+      <h1>Gerenciamento de Alunos</h1>
+      <button id="openModalAlunoBtn" class="btn btn-primary">Adicionar Aluno</button>
+    </div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>NOME</th>
+            <th>USERNAME (LOGIN)</th>
+            <th>NÍVEL ESCOLAR</th>
+            <th>TURMA</th>
+            <th>AÇÕES</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaAlunosBody">
+          </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="modalAluno" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModalAlunoBtn" class="modal-close">&times;</span>
+      <h2>Novo Aluno</h2>
+      <form id="formAluno">
+        <div class="form-group">
+          <label for="aluno-name">Nome Completo do Aluno</label>
+          <input type="text" id="aluno-name" name="displayName" required>
+        </div>
+        
+        <p style="font-size: 13px; color: #555;">
+          O <strong>Username</strong> e a <strong>Senha Provisória</strong> serão gerados automaticamente.
+          Você poderá visualizá-los após a criação.
+        </p>
+        
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar e Gerar Credenciais</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <script src="../scripts/alunos.js" type="module"></script>
+
+</body>
+</html>

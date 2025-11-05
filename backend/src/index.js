@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import iaRoutes from "./routes/iaRoutes.js";
 import planRoutes from "./routes/planRoutes.js";
+import classRoutes from "./routes/classRoutes.js";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -24,9 +25,10 @@ app.use(rateLimit({
 }));
 app.use(express.json());
 
-app.use("/plans", planRoutes);
-app.use("/users", userRoutes);
-app.use("/auth", authRoutes);
+app.use("/api/classes", classRoutes);
+app.use("/api/plans", planRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/ia", iaRoutes);
 app.use(errorHandler);
 
