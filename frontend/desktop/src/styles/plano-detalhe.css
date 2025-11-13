@@ -1,0 +1,86 @@
+/* --- Layout Principal (3 Colunas) --- */
+.curriculum-builder {
+  display: grid;
+  grid-template-columns: 250px 1fr 1.5fr; /* Col 1 (Info), Col 2 (Módulos), Col 3 (Tópicos) */
+  gap: 24px;
+  height: calc(100vh - 200px); /* Ocupa a altura da tela menos o header/padding */
+}
+
+.builder-column {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  padding: 20px;
+  height: 100%;
+  box-sizing: border-box; /* Inclui padding na altura */
+  
+  /* Permite scroll interno */
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Cabeçalho das Colunas (Título + Botão) --- */
+.header-column {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.header-column h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* --- Lista de Itens (Módulos/Tópicos) --- */
+.item-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto; /* Scroll se a lista for grande */
+}
+
+.item-list li {
+  padding: 12px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-bottom: 4px;
+  
+  /* Para os botões de delete/edit */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.item-list li:hover {
+  background-color: #f9f9f9;
+}
+
+/* Item selecionado (Módulo ativo) */
+.item-list li.active {
+  background-color: #e6f7ff; /* Azul claro */
+  color: #0056b3;
+}
+
+.item-list .item-placeholder {
+  color: #888;
+  font-style: italic;
+  cursor: default;
+}
+
+/* Botões de Ação (Editar/Apagar) dentro dos itens da lista */
+.item-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #888;
+  padding: 4px;
+}
+.item-actions button:hover {
+  color: #333;
+}
+.item-actions .delete-btn:hover {
+  color: #cc0000;
+}

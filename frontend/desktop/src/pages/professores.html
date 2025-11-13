@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StudyUp Admin - Professores</title>
   
+  <link rel="stylesheet" href="../styles/layout.css">
   <link rel="stylesheet" href="../styles/main.css">
-  <link rel="stylesheet" href="../styles/professores.css">
-  
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="../styles/turmas-conteudos.css"> <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
 </head>
 <body>
 
@@ -22,6 +21,16 @@
       <button id="openModalProfessorBtn" class="btn btn-primary">Adicionar Professor</button>
     </div>
 
+    <div class="filters">
+      <div class="search-bar">
+        <input type="text" id="prof-search" placeholder="Buscar por nome ou email...">
+      </div>
+      <select id="prof-filter-sort" class="filter-select">
+        <option value="asc">Ordem Alfabética (A-Z)</option>
+        <option value="desc">Ordem Alfabética (Z-A)</option>
+      </select>
+    </div>
+
     <div class="table-container">
       <table>
         <thead>
@@ -32,8 +41,7 @@
             <th>AÇÕES</th>
           </tr>
         </thead>
-        <tbody id="tabelaProfessoresBody">
-          </tbody>
+        <tbody id="tabelaProfessoresBody"></tbody>
       </table>
     </div>
   </main>
@@ -48,18 +56,30 @@
           <input type="text" id="prof-name" name="displayName" required>
         </div>
         <div class="form-group">
-          <label for="prof-email">Email de Login</label>
+          <label for="prof-email">Email de Login (Real)</label>
           <input type="text" id="prof-email" name="email" required>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="prof-password-group">
           <label for="prof-password">Senha Provisória</label>
           <input type="text" id="prof-password" name="password" required>
         </div>
-        
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
       </form>
+    </div>
+  </div>
+  
+  <div id="modalStatus" class="modal-overlay" style="z-index: 1001;">
+    <div class="modal-content">
+      <span id="closeStatusModalBtn" class="modal-close">&times;</span>
+      <h2 id="statusModalTitle">Sucesso!</h2>
+      <pre id="statusModalMessage" style="background-color: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+        Professor atualizado.
+      </pre>
+      <div class="form-actions">
+        <button id="okStatusModalBtn" class="btn btn-primary">OK</button>
+      </div>
     </div>
   </div>
   

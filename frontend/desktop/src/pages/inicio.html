@@ -1,44 +1,111 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StudyUp - Início</title>
-  <link rel="stylesheet" href="../styles/inicio.css" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
-    rel="stylesheet"
-  />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded"
-    rel="stylesheet"
-  />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyUp Admin - Dashboard</title>
+  <link rel="stylesheet" href="../styles/layout.css">
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="../styles/inicio.css"> 
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
 </head>
 <body>
-  <div class="container">
-    <div id="menu-container"></div>
 
-    <main class="conteudo">
-      <div id="topbar-container"></div>
+  <div id="menu-container"></div>
+  <div id="topbar-container"></div>
 
-      <section class="dashboard">
-        <div class="card">
-          <h3>10</h3>
-          <p>Professores Cadastrados</p>
+  <main class="content">
+    
+    <div class="header">
+      <h1>Dashboard</h1>
+    </div>
+
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <span class="material-symbols-rounded icon-kpi">school</span>
+        <div class="kpi-info">
+          <span class="kpi-value" id="kpi-alunos">...</span>
+          <span class="kpi-label">Total de Alunos</span>
         </div>
-        <div class="card">
-          <h3>300</h3>
-          <p>Alunos Cadastrados</p>
+      </div>
+      <div class="kpi-card">
+        <span class="material-symbols-rounded icon-kpi">person</span>
+        <div class="kpi-info">
+          <span class="kpi-value" id="kpi-professores">...</span>
+          <span class="kpi-label">Total de Professores</span>
         </div>
-        <div class="card">
-          <h3>10</h3>
-          <p>Turmas Cadastradas</p>
+      </div>
+      <div class="kpi-card">
+        <span class="material-symbols-rounded icon-kpi">menu_book</span>
+        <div class="kpi-info">
+          <span class="kpi-value" id="kpi-turmas">...</span>
+          <span class="kpi-label">Total de Turmas</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="dashboard-grid">
+      
+      <section class="leaderboard">
+        <h2>Ranking de Alunos (Top 5)</h2>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Posição</th>
+                <th>Aluno (Nome)</th>
+                <th>Pontos</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTableBody">
+              </tbody>
+          </table>
         </div>
       </section>
-    </main>
-  </div>
 
-  <script src="../scripts/componentLoader.js"></script>
-  <script src="../scripts/inicio.js"></script>
+      <section class="news-module">
+        
+        <div class="header">
+          <h2>Mural de Notícias</h2>
+          <button id="openModalNoticiaBtn" class="btn btn-primary">Adicionar</button>
+        </div>
+
+        <h3>Notícias Recentes</h3>
+        <ul id="newsListContainer" class="news-feed">
+          </ul>
+      
+      </section>
+
+    </div> </main>
+
+  <div id="modalNoticia" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModalNoticiaBtn" class="modal-close">&times;</span>
+      <h2>Publicar Nova Notícia</h2>
+      
+      <form id="formNoticia">
+        <div class="form-group">
+          <label for="newsTitle">Título</label>
+          <input type="text" id="newsTitle" placeholder="Ex: Evento de Robótica" required>
+        </div>
+        <div class="form-group">
+          <label for="newsContent">Conteúdo</label>
+          <textarea id="newsContent" rows="3" placeholder="Ex: Inscrições abertas..." required></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="newsImageUrl">URL da Imagem (Opcional)</label>
+          <input type="text" id="newsImageUrl" placeholder="https://link-para-o-banner.com/imagem.png">
+        </div>
+        
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Publicar Notícia</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <script src="../scripts/inicio.js" type="module"></script>
+
 </body>
 </html>

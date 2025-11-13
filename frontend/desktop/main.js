@@ -15,7 +15,7 @@ function createWindow() {
   });
 
   // Caminho da página que será carregada
-  win.loadFile(path.join(__dirname, "src/pages/alunos.html"));
+  win.loadFile(path.join(__dirname, "src/pages/inicio.html"));
 }
 
 app.whenReady().then(() => {

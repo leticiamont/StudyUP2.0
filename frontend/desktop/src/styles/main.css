@@ -10,8 +10,8 @@ body {
 /* (Você já deve ter isso, mas garanta que 'content' esteja ao lado do menu) */
 .content {
   /* Ajuste este padding-left para a largura do seu menu */
-  padding-left: 250px; 
-  padding-top: 70px; /* Ajuste para a altura da sua topbar */
+  padding-left: 264px; 
+  padding-top: 84px; /* Ajuste para a altura da sua topbar */
   padding-right: 24px;
   padding-bottom: 24px;
 }

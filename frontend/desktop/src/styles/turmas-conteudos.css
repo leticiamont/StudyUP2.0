@@ -66,3 +66,34 @@
 }
 
 /* (Restante do CSS da tabela e paginação do seu main.css) */
+
+/* --- Estilos dos Filtros (baseado no seu layout) --- */
+.filters {
+  display: flex;
+  justify-content: flex-start; /* Alinha no começo */
+  align-items: center;
+  gap: 16px; /* Espaço entre os filtros */
+  margin-bottom: 16px;
+  padding: 16px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.search-bar {
+  flex-grow: 1; /* Faz a barra de busca ocupar o espaço */
+}
+
+.search-bar input,
+.filter-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #CCC;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box; /* Importante para o padding não quebrar */
+}
+
+.filter-select {
+  width: 200px; /* Largura fixa para os dropdowns de filtro */
+  flex-shrink: 0;
+}

@@ -1,13 +1,22 @@
 import express from 'express';
-// Importa as duas funções do controller
-import { createPlan, getPlans } from '../controllers/planController.js';
+// Importa todas as funções
+import {
+  createPlan,
+  getPlans,
+  getPlanById,
+  updatePlan,
+  deletePlan
+} from '../controllers/planController.js';
 
 const router = express.Router();
 
-// 1. Rota GET (para listar os planos - corrige o 404)
+// Rotas da Coleção
 router.get('/', getPlans);
-
-// 2. Rota POST (para criar o plano)
 router.post('/', createPlan);
+
+// Rotas do Documento Específico
+router.get('/:id', getPlanById);
+router.put('/:id', updatePlan);
+router.delete('/:id', deletePlan);
 
 export default router;
