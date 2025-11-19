@@ -1,0 +1,95 @@
+/* * ESTE É O CSS DO LAYOUT PRINCIPAL (SIDEBAR E TOPBAR)
+ * que estava faltando.
+ */
+
+/* --- A Barra Lateral Azul (Menu) --- */
+.sidebar {
+  position: fixed; /* Fica presa na tela */
+  left: 0;
+  top: 0;
+  height: 100vh; /* 100% da altura da tela */
+  width: 240px; /* Largura do menu */
+  background-color: #007BFF; /* O azul do StudyUp */
+  color: #fff;
+  padding: 16px;
+  box-sizing: border-box; /* Garante que o padding não aumente a largura */
+  z-index: 100; /* Fica acima do conteúdo */
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 24px;
+}
+.logo span {
+  font-weight: normal;
+  color: #A0D911; /* Verde do StudyUp */
+}
+
+/* --- Menu (Botões de Navegação) --- */
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Espaço entre os botões */
+}
+
+.menu button {
+  /* Reseta o estilo padrão do botão */
+  background: none;
+  border: none;
+  
+  /* Nosso Estilo */
+  color: #fff;
+  font-size: 16px;
+  text-align: left;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  
+  /* Alinhamento do ícone e texto */
+  display: flex;
+  align-items: center;
+  gap: 12px; /* Espaço entre ícone e texto */
+}
+
+.menu button:hover {
+  background-color: rgba(255, 255, 255, 0.1); /* Efeito hover sutil */
+}
+
+/* --- A Barra do Topo (Header) --- */
+.topo {
+  position: fixed;
+  top: 0;
+  left: 240px; /* Começa ONDE o menu termina */
+  width: calc(100% - 240px); /* Ocupa o resto da largura */
+  height: 60px; /* Altura da barra */
+  
+  background-color: #fff;
+  border-bottom: 1px solid #eee;
+  z-index: 99; /* Fica abaixo do menu (se sobrepor), mas acima do conteúdo */
+  
+  /* Alinhamento dos itens internos */
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Joga o perfil para a direita */
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+.icones-topo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.perfil {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #333; /* Cor do texto "admin" */
+}
+
+/* Ajuste para ícones do Google */
+.material-symbols-rounded {
+  color: inherit; /* Herda a cor do pai (botão ou perfil) */
+}

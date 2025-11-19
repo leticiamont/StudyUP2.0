@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import newsRoutes from "./routes/newsRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
@@ -30,6 +32,10 @@ app.use(rateLimit({
 }));
 app.use(express.json());
 app.use("/uploads", express.static(path.resolve("uploads")));
+
+
+app.use("/api/news", newsRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/classes", classRoutes);
 app.use("/api/plans", planRoutes);
 app.use("/api/users", userRoutes);

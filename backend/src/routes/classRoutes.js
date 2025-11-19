@@ -1,5 +1,5 @@
 import express from 'express';
-import { getClasses, createClass } from '../controllers/classController.js';
+import { getClasses, createClass, getClassById, updateClass } from '../controllers/classController.js';
 // (Futuramente, adicionaremos middlewares de autenticação aqui)
 
 // Inicializa o roteador do Express
@@ -14,8 +14,8 @@ router.get('/', getClasses);
 router.post('/', createClass);
 
 // (Aqui entrarão as rotas PUT, DELETE e GET /:id futuramente)
-// router.get('/:id', getClassById);
-// router.put('/:id', updateClass);
+router.get('/:id', getClassById);
+router.put('/:id', updateClass);
 // router.delete('/:id', deleteClass);
 
 // Exporta o roteador configurado

@@ -1,4 +1,3 @@
-// O backend que já funciona
 const BASE_URL = "http://localhost:3000";
 
 /**
@@ -7,18 +6,13 @@ const BASE_URL = "http://localhost:3000";
 async function get(endpoint) {
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`);
-
     if (!response.ok) {
-      // Tenta ler o erro do backend (se houver)
       const errorData = await response.json().catch(() => null);
-      console.error(`Erro HTTP ${response.status} ao buscar ${endpoint}`, errorData);
-      throw new Error(`Erro ${response.status}: ${errorData?.error || 'Erro de rede'}`);
+      throw new Error(`Erro ${response.status}: ${errorData?.error || response.statusText}`);
     }
-    
     return await response.json();
-
   } catch (error) {
-    console.error(`[api.js:get] Falha na requisição: ${error.message}`);
+    console.error(`[api.js:get] Falha: ${error.message}`);
     throw error;
   }
 }
@@ -33,25 +27,61 @@ async function post(endpoint, data) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
-      console.error(`Erro HTTP ${response.status} ao postar em ${endpoint}`, errorData);
-      throw new Error(`Erro ${response.status}: ${errorData?.error || 'Erro de rede'}`);
+      throw new Error(`Erro ${response.status}: ${errorData?.error || response.statusText}`);
     }
-
     return await response.json();
-
   } catch (error) {
-    console.error(`[api.js:post] Falha na requisição: ${error.message}`);
+    console.error(`[api.js:post] Falha: ${error.message}`);
     throw error;
   }
 }
 
-// Exporta um objeto 'api' por padrão
-// Isso faz o 'import api from ...' funcionar no outro script
+/**
+ * @description [NECESSÁRIO] Executa uma requisição PUT (para atualizar dados)
+ */
+async function put(endpoint, data) {
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(`Erro ${response.status}: ${errorData?.error || response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`[api.js:put] Falha: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * @description [BÓNUS] Executa uma requisição DELETE (para apagar dados)
+ */
+async function del(endpoint) {
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(`Erro ${response.status}: ${errorData?.error || response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error(`[api.js:delete] Falha: ${error.message}`);
+    throw error;
+  }
+}
+
+// Exporta o objeto completo
 export default {
   get,
   post,
-  // (Futuramente: put, delete, etc.)
+  put,
+  delete: del, // 'delete' é uma palavra reservada, usamos 'del'
 };

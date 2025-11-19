@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyUp Admin - Construtor de Plano</title>
+  
+  <link rel="stylesheet" href="../styles/layout.css">
+  <link rel="stylesheet" href="../styles/main.css">
+  <link rel="stylesheet" href="../styles/plano-detalhe.css"> 
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
+</head>
+<body>
+
+  <div id="menu-container"></div>
+  <div id="topbar-container"></div>
+
+  <main class="content">
+    
+    <div class="header">
+      <h1 id="plano-header-title">Carregando Plano...</h1>
+      <button id="salvarPlanoBtn" class="btn btn-primary">Salvar Alterações</button>
+    </div>
+
+    <div class="curriculum-builder">
+
+      <section class="builder-column" id="plano-info-column">
+        <h3>Informações Básicas</h3>
+        <form id="formPlanoInfo">
+          <div class="form-group">
+            <label for="plano-name">Nome do Plano (Ex: Currículo 6º Ano)</label>
+            <input type="text" id="plano-name" name="name" required>
+          </div>
+          <div class="form-group">
+            <label for="plano-gradeLevel">Nível Escolar</label>
+            <select id="plano-gradeLevel" name="gradeLevel" required>
+              <option value="">Selecione o nível</option>
+              <option value="Ensino Fundamental 1">Ensino Fundamental 1</option>
+              <option value="Ensino Fundamental 2">Ensino Fundamental 2</option>
+              <option value="Ensino Médio">Ensino Médio</option>
+            </select>
+          </div>
+        </form>
+      </section>
+
+      <section class="builder-column" id="modulos-column">
+        <div class="header-column">
+          <h3>Módulos (Bimestres)</h3>
+          <button id="openModalModuloBtn" class="btn btn-secondary btn-sm">Novo Módulo</button>
+        </div>
+        <ul id="modulosList" class="item-list">
+          </ul>
+      </section>
+
+      <section class="builder-column" id="topicos-column">
+        <div class="header-column">
+          <h3 id="topicos-header-title">Tópicos (Aulas)</h3>
+          <button id="openModalTopicoBtn" class="btn btn-secondary btn-sm" disabled>Novo Tópico</button>
+        </div>
+        <ul id="topicosList" class="item-list">
+          <li class="item-placeholder">Selecione um módulo para ver os tópicos.</li>
+        </ul>
+      </section>
+      
+    </div> </main>
+
+  <div id="modalModulo" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModalModuloBtn" class="modal-close">&times;</span>
+      <h2 id="modalModuloTitle">Novo Módulo</h2>
+      <form id="formModulo">
+        <div class="form-group">
+          <label for="modulo-title">Título do Módulo (Ex: Bimestre 1: Lógica)</label>
+          <input type="text" id="modulo-title" name="title" required>
+        </div>
+        <div class="form-group">
+          <label for="modulo-points">Pontos Totais (que o professor distribuirá)</label>
+          <input type="number" id="modulo-points" name="totalPoints" value="100" required>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar Módulo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <div id="modalTopico" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModalTopicoBtn" class="modal-close">&times;</span>
+      <h2 id="modalTopicoTitle">Novo Tópico (Aula)</h2>
+      <form id="formTopico">
+        <div class="form-group">
+          <label for="topico-title">Título do Tópico (Ex: Aula 1: O que é um Algoritmo?)</label>
+          <input type="text" id="topico-title" name="title" required>
+        </div>
+        <div class="form-group">
+          <label for="topico-desc">Descrição (para o Professor)</label>
+          <textarea id="topico-desc" name="description" rows="3" placeholder="Breve descrição do que o professor deve cobrir..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar Tópico</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <div id="modalStatus" class="modal-overlay" style="z-index: 1001;">
+    </div>
+
+  <div id="modalTopico" class="modal-overlay">
+    </div>
+  
+  <div id="modalStatus" class="modal-overlay" style="z-index: 1001;">
+    <div class="modal-content">
+      <span id="closeStatusModalBtn" class="modal-close">&times;</span>
+      <h2 id="statusModalTitle">Sucesso!</h2>
+      <pre id="statusModalMessage" style="background-color: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+        Ação concluída.
+      </pre>
+      <div class="form-actions">
+        <button id="okStatusModalBtn" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../scripts/plano-detalhe.js" type="module"></script>
+
+</body>
+</html>
