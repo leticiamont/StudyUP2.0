@@ -1,4 +1,3 @@
-// Importa o 'db' (instância do Firestore)
 import { db } from '../config/firebase.js';
 
 /**
@@ -38,10 +37,8 @@ export const getPlans = async (req, res) => {
  */
 export const createPlan = async (req, res) => {
   try {
-    // Usando o NOVO SCHEMA que definimos
     const { name, gradeLevel } = req.body;
 
-    // Validação
     if (!name || !gradeLevel) {
       return res.status(400).json({ 
         error: 'Campos obrigatórios ausentes: name e gradeLevel são necessários.' 

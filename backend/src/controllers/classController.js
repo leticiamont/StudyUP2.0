@@ -29,14 +29,12 @@ export const getClasses = async (req, res) => {
 /**
  * @route POST /api/classes
  * @description Cria uma nova turma (PADRONIZADA).
- * @body { name, gradeLevel, teacherName, schedule, planId (opcional) }
+ * @body { name, gradeLevel, teacherName, schedule, planId }
  */
 export const createClass = async (req, res) => {
   try {
-    // Usando o NOVO SCHEMA (baseado no layout turmas.png)
     const { name, gradeLevel, teacherName, schedule, planId } = req.body;
 
-    // Validação
     if (!name || !gradeLevel || !teacherName) {
       return res.status(400).json({ 
         error: 'Campos obrigatórios ausentes: name, gradeLevel, teacherName são necessários.' 

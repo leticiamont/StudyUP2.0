@@ -1,10 +1,6 @@
-// src/services/planService.js
 import { db } from "../config/firebase.js";
 
-/**
- * Service para CRUD de planos de aula (collection "plans").
- * Usamos createdAt e updatedAt em ISO string para simplicidade.
- */
+
 
 const COLLECTION = "plans";
 
@@ -18,7 +14,7 @@ const planService = {
       createdBy: data.createdBy || null,
       createdAt: new Date().toISOString(),
       lessons: Array.isArray(data.lessons) ? data.lessons : [],
-      meta: data.meta || {}, // campo opcional para extras
+      meta: data.meta || {}, 
     };
 
     const docRef = await db.collection(COLLECTION).add(payload);
@@ -47,7 +43,6 @@ const planService = {
       meta: data.meta || undefined,
     };
 
-    // Remove undefined keys
     Object.keys(updatePayload).forEach(k => updatePayload[k] === undefined && delete updatePayload[k]);
 
     await db.collection(COLLECTION).doc(id).update(updatePayload);

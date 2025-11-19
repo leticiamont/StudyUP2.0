@@ -1,4 +1,3 @@
-// src/config/firebase.js
 import admin from "firebase-admin";
 import { readFileSync } from "fs";
 import dotenv from "dotenv";
@@ -13,6 +12,7 @@ if (!admin.apps.length) {
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: key,
     }),
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET
   });
 }
 
