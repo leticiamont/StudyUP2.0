@@ -38,24 +38,49 @@ export const getStats = async (req, res, next) => {
 
 /**
  * @route GET /api/dashboard/leaderboard
- * @description Busca o Top 5 alunos por pontos (gamificação)
+ * @description Busca Ranking (Geral do Professor ou Específico da Turma)
  */
 export const getLeaderboard = async (req, res, next) => {
   try {
+    const { classId, teacherId } = req.query;
     const usersCollection = db.collection('users');
     
-    // Query: Aonde 'role' == 'student', 
-    // Ordene por 'points' (descendente), 
-    // Limite a 5 resultados
-    const snapshot = await usersCollection
-      .where('role', '==', 'student')
+    let query = usersCollection.where('role', '==', 'student');
+
+    if (classId) {
+        // Filtro por UMA turma específica
+        query = query.where('classId', '==', classId);
+    } 
+    else if (teacherId) {
+        // "Geral" do Professor (Todas as SUAS turmas)
+        
+        // 1. Busca os IDs das turmas desse professor
+        const classesSnapshot = await db.collection('classes')
+            .where('teacherId', '==', teacherId)
+            .get();
+            
+        if (classesSnapshot.empty) {
+            // Se o professor não tem turmas, não tem alunos para mostrar
+            return res.status(200).json([]); 
+        }
+
+        const myClassIds = classesSnapshot.docs.map(doc => doc.id);
+
+        // 2. Filtra alunos onde 'classId' esteja NA LISTA das minhas turmas
+        // (O Firestore aceita até 30 itens no operador 'in')
+        if (myClassIds.length > 0) {
+            query = query.where('classId', 'in', myClassIds);
+        } else {
+            return res.status(200).json([]);
+        }
+    }
+
+    // 3. Ordena por pontos
+    const snapshot = await query
       .orderBy('points', 'desc')
-      .limit(5)
+      .limit(10)
       .get();
       
-    // ALERTA DE ÍNDICE: Esta query (where + orderBy) vai exigir um
-    // índice composto no Firestore. O log do backend vai dar o link.
-
     if (snapshot.empty) {
       return res.status(200).json([]);
     }
@@ -66,17 +91,16 @@ export const getLeaderboard = async (req, res, next) => {
         id: doc.id,
         displayName: data.displayName,
         username: data.username,
-        points: data.points || 0 // Garante que é 0 se 'undefined'
+        points: data.points || 0 
       };
     });
     
     res.status(200).json(leaderboard);
 
   } catch (error) {
-    console.error('[dashboardController:getLeaderboard] Erro ao buscar leaderboard:', error);
-    // Se o erro for de "Índice", o Firebase vai avisar no log
+    console.error('[dashboardController:getLeaderboard] Erro:', error);
     if (error.code === 'failed-precondition') {
-       return res.status(500).json({ error: 'Erro de query. O Firestore provavelmente precisa de um índice. Verifique o log do backend.' });
+       return res.status(500).json({ error: 'Erro de índice no Firebase. Verifique o console do backend.' });
     }
     next(error);
   }

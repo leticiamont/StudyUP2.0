@@ -1,6 +1,5 @@
 import { db, admin } from "../config/firebase.js";
 
-// --- Funções Helper (para reuso) ---
 
 /**
  * @description Gera um username a partir do nome completo.
@@ -41,8 +40,6 @@ const parseDate = (dateString) => {
   // Adicionamos T12:00:00Z para evitar problemas de fuso horário (Timezone)
   return `${year}-${month}-${day}T12:00:00Z`;
 };
-
-// --- Objeto Principal do Serviço ---
 
 const userService = {
   /**
@@ -121,31 +118,35 @@ const userService = {
    * @description Busca usuários com filtros e ordenação
    * @param role (string)
    * @param gradeLevel (string | undefined)
-   * @param sort (string | undefined) - 'asc' ou 'desc'
+   * @param sort (string | undefined)
    * @param search (string | undefined)
+   * @param classId (string | undefined) 
    */
-  async getAllUsers(role, gradeLevel, sort, search) {
+  async getAllUsers(role, gradeLevel, sort, search, classId) { 
     let query = db.collection("users");
 
-    // 1. Filtro de Role (Obrigatório)
+    // 1. Filtro de Role
     query = query.where("role", "==", role);
 
-    // 2. Filtro de Nível Escolar (Novo)
+    // 2. Filtro de Nível Escolar
     if (gradeLevel) {
       query = query.where("gradeLevel", "==", gradeLevel);
     }
+
+    // 3. NOVO: Filtro de Turma (classId)
+    if (classId) {
+      query = query.where("classId", "==", classId);
+    }
     
-    // 3. Ordenação (A-Z / Z-A)
+    // 4. Ordenação
     const sortDirection = (sort === 'asc') ? 'asc' : 'desc';
     query = query.orderBy("displayName", sortDirection);
     
-    // NOTA: Esta consulta vai exigir um ÍNDICE COMPOSTO no Firestore.
-
     const snapshot = await query.get();
 
     let usersList = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-    // 4. Filtro de Busca (Manual)
+    // 5. Filtro de Busca (Manual)
     if (search) {
       usersList = usersList.filter(user => 
         user.displayName.toLowerCase().includes(search.toLowerCase()) ||
@@ -200,7 +201,7 @@ const userService = {
   },
   
   /**
-   * @description [MODIFICADA] Recebe uma lista JSON e salva no banco
+   * @description Recebe uma lista JSON e salva no banco
    * @param listaDeAlunos - Array de objetos JSON (pré-validados)
    */
   async confirmBatchUsers(listaDeAlunos) {

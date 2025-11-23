@@ -2,12 +2,11 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons'; 
 
-
 import ProfessorHome from './ProfessorHome'; 
 import ProfessorTurmas from './ProfessorTurmas';
 import ProfessorConteudo from './ProfessorConteudo';
 import ProfessorForum from './ProfessorForum';
-import ProfessorConfig from './ProfessorConfig';
+import ProfessorRanking from './ProfessorRanking';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,7 +15,7 @@ function getIconName(routeName) {
   if (routeName === 'Turmas') return 'account-group';
   if (routeName === 'Conteúdo') return 'book-open-variant';
   if (routeName === 'Fórum') return 'chat';
-  if (routeName === 'Config.') return 'cog';
+  if (routeName === 'Ranking') return 'trophy'; 
 }
 
 export default function ProfessorTabs({ route }) {
@@ -40,12 +39,11 @@ export default function ProfessorTabs({ route }) {
         )
       })}
     >
-      {/* As 5 Abas */}
       <Tab.Screen name="Início" component={ProfessorHome} initialParams={{ user }} />
       <Tab.Screen name="Turmas" component={ProfessorTurmas} initialParams={{ user }} />
       <Tab.Screen name="Conteúdo" component={ProfessorConteudo} initialParams={{ user }} />
       <Tab.Screen name="Fórum" component={ProfessorForum} initialParams={{ user }} />
-      <Tab.Screen name="Config." component={ProfessorConfig} initialParams={{ user }} />
+      <Tab.Screen name="Ranking" component={ProfessorRanking} initialParams={{ user }} />
     </Tab.Navigator>
   );
 }

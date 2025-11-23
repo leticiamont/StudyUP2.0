@@ -1,5 +1,4 @@
 import express from 'express';
-// Importa todas as funções
 import {
   createPlan,
   getPlans,
@@ -7,16 +6,14 @@ import {
   updatePlan,
   deletePlan
 } from '../controllers/planController.js';
+import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Rotas da Coleção
-router.get('/', getPlans);
-router.post('/', createPlan);
-
-// Rotas do Documento Específico
-router.get('/:id', getPlanById);
-router.put('/:id', updatePlan);
-router.delete('/:id', deletePlan);
+router.get('/', authMiddleware, getPlans);
+router.post('/', authMiddleware, createPlan);
+router.get('/:id', authMiddleware, getPlanById);
+router.put('/:id', authMiddleware, updatePlan);
+router.delete('/:id', authMiddleware, deletePlan);
 
 export default router;

@@ -1,24 +1,62 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  ScrollView, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  Alert, 
+  Linking 
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-// Dados de exemplo (vamos substituí-los pelo backend depois)
-const materials = [
-  { type: 'PDF', title: 'Aula 1 - PDF', icon: 'file-pdf-box', actionIcon: 'download' },
-  { type: 'Vídeo', title: 'Aula 1 - Vídeo', icon: 'play-box', actionIcon: 'download' },
-  { type: 'Link', title: 'Aula 1 - Link', icon: 'folder-open', actionIcon: 'open-in-new' },
-  { type: 'PDF', title: 'Aula 2 - PDF', icon: 'file-pdf-box', actionIcon: 'download' },
-  { type: 'PDF', title: 'Aula 3 - PDF', icon: 'file-pdf-box', actionIcon: 'download' },
-  { type: 'Link', title: 'Aula 3 - Link', icon: 'folder-open', actionIcon: 'open-in-new' },
-  { type: 'Vídeo', title: 'Aula 3 - Vídeo', icon: 'play-box', actionIcon: 'download' },
-  { type: 'Vídeo', title: 'Aula 4 - Vídeo', icon: 'play-box', actionIcon: 'download' },
-];
+import { api } from '../service/apiService';
 
 export default function AlunoConteudo({ route }) {
   const user = route.params?.user || {};
+  
+  // Lógica para pegar o nome e a turma
   const userName = user.name || user.displayName || 'Aluno';
-  const points = 1200;
+  // Se o user não tiver classId, usamos uma string vazia ou tratamos o erro
+  const classId = user.classId; 
+  const points = user.points || 1200; // Usa pontos do usuário ou 1200 se não tiver
+
+  const [conteudos, setConteudos] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchConteudos = async () => {
+
+    try {
+      setIsLoading(true);
+      // Busca conteúdos (filtrando por turma se necessário, ou pegando todos)
+      const endpoint = classId ? `/api/contents?classId=${classId}` : '/api/contents';
+      const data = await api.get(endpoint);
+      
+      // O backend retorna uma lista, garantimos que é um array
+      setConteudos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Erro', 'Não foi possível carregar os conteúdos.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchConteudos();
+  }, []);
+
+  // Função para abrir o link/PDF
+  const handleOpenContent = (url) => {
+    if (url) {
+      Linking.openURL(url).catch(err => 
+        Alert.alert("Erro", "Não foi possível abrir este link.")
+      );
+    } else {
+      Alert.alert("Aviso", "Este conteúdo não possui um link válido.");
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -37,45 +75,62 @@ export default function AlunoConteudo({ route }) {
         </TouchableOpacity>
       </View>
 
-      {/* 2. Botão Dropdown Módulo */}
+      {/* 2. Botão Dropdown Módulo (Fixo por enquanto) */}
       <TouchableOpacity style={styles.moduleButton}>
-        <Text style={styles.moduleButtonText}>MODULO 1 - INTRODUÇÃO</Text>
+        <Text style={styles.moduleButtonText}>MÓDULO 1 - GERAL</Text>
         <MaterialCommunityIcons name="chevron-down" size={24} color="#fff" />
       </TouchableOpacity>
 
-      {/* 3. Abas de Filtro (PDF, Vídeos, Links) */}
+      {/* 3. Abas de Filtro (Visual) */}
       <View style={styles.filterTabs}>
         <TouchableOpacity style={styles.filterChipActive}>
-          <Text style={styles.filterTextActive}>PDF</Text>
+          <Text style={styles.filterTextActive}>TODOS</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.filterChip}>
+          <Text style={styles.filterText}>PDF</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.filterChip}>
           <Text style={styles.filterText}>VÍDEOS</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.filterChip}>
-          <Text style={styles.filterText}>LINKS</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* 4. Lista de Materiais */}
-      <ScrollView style={styles.listContainer}>
-        {materials.map((item, index) => (
-          <View key={index} style={styles.materialItem}>
-            {/* Ícone e Título */}
-            <View style={styles.materialInfo}>
-              <MaterialCommunityIcons name={item.icon} size={30} color="#1154D9" />
-              <Text style={styles.materialTitle}>{item.title}</Text>
-            </View>
-            {/* Botão de Ação (Download/Abrir) */}
-            <TouchableOpacity>
-              <MaterialCommunityIcons name={item.actionIcon} size={26} color="#1154D9" />
-            </TouchableOpacity>
-          </View>
-        ))}
-      </ScrollView>
+      {/* 4. Lista de Materiais Dinâmica */}
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#1154D9" style={{ marginTop: 20 }} />
+      ) : (
+        <ScrollView style={styles.listContainer}>
+          {conteudos.length === 0 ? (
+            <Text style={styles.emptyText}>Nenhum conteúdo encontrado para sua turma.</Text>
+          ) : (
+            conteudos.map((item) => (
+              <TouchableOpacity 
+                key={item.id} 
+                style={styles.materialItem} 
+                onPress={() => handleOpenContent(item.url)}
+              >
+                {/* Ícone e Título */}
+                <View style={styles.materialInfo}>
+                  <MaterialCommunityIcons 
+                    // Escolhe ícone baseado no tipo do arquivo
+                    name={item.type?.includes('pdf') ? 'file-pdf-box' : 'file-document-outline'} 
+                    size={30} 
+                    color="#1154D9" 
+                  />
+                  <Text style={styles.materialTitle} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                </View>
+                
+                {/* Botão de Ação (Download/Abrir) */}
+                <MaterialCommunityIcons name="open-in-new" size={24} color="#555" />
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   safeArea: { 
@@ -89,14 +144,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
   },
-  headerProfile: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
-  },
-  headerPoints: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
-  },
+  headerProfile: { flexDirection: 'row', alignItems: 'center' },
+  headerPoints: { flexDirection: 'row', alignItems: 'center' },
   headerText: { 
     marginLeft: 8, 
     fontWeight: 'bold', 
@@ -130,28 +179,22 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   filterChip: {
-    backgroundColor: '#f0f0f0', // Cor inativa
+    backgroundColor: '#f0f0f0',
     paddingVertical: 8,
     paddingHorizontal: 20,
     borderRadius: 20,
   },
   filterChipActive: {
-    backgroundColor: '#333', // Cor ativa
+    backgroundColor: '#333',
     paddingVertical: 8,
     paddingHorizontal: 20,
     borderRadius: 20,
   },
-  filterText: { 
-    color: '#555', 
-    fontWeight: 'bold' 
-  },
-  filterTextActive: { 
-    color: '#BAF241', // Cor do texto ativo
-    fontWeight: 'bold' 
-  },
-  listContainer: { 
-    paddingHorizontal: 20 
-  },
+  filterText: { color: '#555', fontWeight: 'bold' },
+  filterTextActive: { color: '#BAF241', fontWeight: 'bold' },
+  
+  listContainer: { paddingHorizontal: 20 },
+  
   materialItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -162,11 +205,20 @@ const styles = StyleSheet.create({
   },
   materialInfo: { 
     flexDirection: 'row', 
-    alignItems: 'center' 
+    alignItems: 'center',
+    flex: 1, // Garante que o texto ocupe o espaço disponível
+    marginRight: 10
   },
   materialTitle: { 
     fontSize: 16, 
     marginLeft: 15,
-    color: '#333'
+    color: '#333',
+    flexShrink: 1 // Evita que o texto estoure a tela
   },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#888',
+    fontSize: 16
+  }
 });

@@ -1,17 +1,13 @@
 import express from "express";
 import { upload } from "../middlewares/upload.js";
+import { uploadContent, getContents, deleteContent, updateContent } from "../controllers/contentController.js";
+import { authMiddleware } from "../middlewares/authMiddleware.js";
+
 const router = express.Router();
 
-router.post("/upload", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "Nenhum arquivo enviado" });
-  }
-
-  return res.json({
-    message: "Upload concluído",
-    filename: req.file.filename,
-    path: `/uploads/${req.file.filename}`
-  });
-});
+router.get("/", authMiddleware, getContents);
+router.post("/upload", authMiddleware, upload.single("file"), uploadContent);
+router.delete("/:id", authMiddleware, deleteContent);
+router.put("/:id", authMiddleware, updateContent);
 
 export default router;

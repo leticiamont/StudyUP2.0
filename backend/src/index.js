@@ -21,7 +21,9 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: ["http://localhost:3001", "http://localhost:5173", "http://localhost:8081" ], // as portas do front
+  origin: "*", // Permite qualquer origem (Web, Mobile, Localhost)
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
 

@@ -1,31 +1,31 @@
 import { db } from "../config/firebase.js";
 
-/**
- * @route POST /api/plans
- * @description Cria um NOVO plano (apenas o "container" inicial)
- * @body { name, gradeLevel }
- */
+// --- CREATE PLAN ---
 export const createPlan = async (req, res) => {
   try {
-    const { name, gradeLevel } = req.body;
+    const { name, gradeLevel, modules, content } = req.body;
+    const userId = req.user.uid;
+
     if (!name || !gradeLevel) {
       return res.status(400).json({ error: 'Nome e Nível Escolar são obrigatórios.' });
     }
 
-    // O Plano é criado VAZIO, como você sugeriu
     const newPlan = {
       name,
       gradeLevel,
-      modules: [], // A grade começa vazia
+      modules: modules || [], 
+      content: content || "",
+      authorId: userId,
+      classId: null, // Começa sem turma
       createdAt: new Date().toISOString()
     };
 
     const docRef = await db.collection('plans').add(newPlan);
     
-    // Retorna o ID do novo plano, para o frontend poder redirecionar
     res.status(201).json({ 
-      message: 'Plano criado, redirecionando para o construtor...',
-      id: docRef.id 
+      message: 'Plano criado com sucesso!',
+      id: docRef.id,
+      ...newPlan
     });
 
   } catch (error) {
@@ -34,23 +34,31 @@ export const createPlan = async (req, res) => {
   }
 };
 
-/**
- * @route GET /api/plans
- * @description Busca TODOS os planos (para a lista principal)
- * @query search, gradeLevel
- */
+// --- GET PLANS (filtra por Turma) ---
 export const getPlans = async (req, res) => {
-  // ... (Esta função está 100% correta, sem mudanças) ...
   try {
-    const { search, gradeLevel } = req.query;
+    const { search, gradeLevel, classId } = req.query;
+    const userId = req.user.uid;
+
     let query = db.collection('plans');
+
+    if (classId) {
+      // Se pedir de uma turma específica, filtra por ela
+      query = query.where('classId', '==', classId);
+    } else {
+      // Se não, mostra os meus (banco geral)
+      query = query.where('authorId', '==', userId);
+    }
+
     if (gradeLevel) {
       query = query.where('gradeLevel', '==', gradeLevel);
     }
-    query = query.orderBy('gradeLevel', 'asc');
+    
     const snapshot = await query.get();
     if (snapshot.empty) return res.status(200).json([]);
+    
     let plansList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
     if (search) {
       plansList = plansList.filter(plano => 
         plano.name.toLowerCase().includes(search.toLowerCase())
@@ -63,11 +71,6 @@ export const getPlans = async (req, res) => {
   }
 };
 
-
-/**
- * @route GET /api/plans/:id
- * @description Busca UM plano específico (para a página do "Construtor")
- */
 export const getPlanById = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -75,7 +78,7 @@ export const getPlanById = async (req, res, next) => {
     const doc = await docRef.get();
 
     if (!doc.exists) {
-      return res.status(404).json({ error: "Plano de aula não encontrado." });
+      return res.status(404).json({ error: "Plano não encontrado." });
     }
     
     res.status(200).json({ id: doc.id, ...doc.data() });
@@ -86,28 +89,16 @@ export const getPlanById = async (req, res, next) => {
   }
 };
 
-/**
- * @route PUT /api/plans/:id
- * @description ATUALIZA um plano (salva a grade curricular inteira)
- * @body { name, gradeLevel, modules (o array completo) }
- */
+// --- UPDATE PLAN (Atualizado para salvar a Turma/classId) ---
 export const updatePlan = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, gradeLevel, modules } = req.body; // Recebe o objeto inteiro
-
-    if (!name || !gradeLevel || !Array.isArray(modules)) {
-      return res.status(400).json({ error: "Dados do plano inválidos." });
-    }
+    // Pega tudo que vier no body (incluindo classId se vier)
+    const updates = req.body; 
 
     const docRef = db.collection('plans').doc(id);
     
-    // 'update' substitui os campos
-    await docRef.update({
-      name,
-      gradeLevel,
-      modules // Salva o array de Módulos e Tópicos
-    });
+    await docRef.update(updates);
 
     res.status(200).json({ message: "Plano atualizado com sucesso." });
 
@@ -117,10 +108,6 @@ export const updatePlan = async (req, res, next) => {
   }
 };
 
-/**
- * @route DELETE /api/plans/:id
- * @description APAGA um plano de aula
- */
 export const deletePlan = async (req, res, next) => {
   try {
     const { id } = req.params;

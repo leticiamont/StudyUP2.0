@@ -8,10 +8,11 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator 
+  ActivityIndicator,
+  Alert 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native'; 
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth"; // Importamos a função de reset
 import { auth } from '../config/firebaseConfig'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -23,6 +24,7 @@ export default function LoginScreen() {
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false); 
 
+  // --- FUNÇÃO DE LOGIN ---
   const handleLogin = async () => {
     setErrorMessage(''); 
     setIsLoading(true); 
@@ -34,18 +36,14 @@ export default function LoginScreen() {
     }
 
     try {
-      
       const userCredential = await signInWithEmailAndPassword(auth, email, senha);
       const user = userCredential.user;
-
       const token = await user.getIdToken();
 
       await AsyncStorage.setItem('userToken', token);
 
-      // ⚠️ IMPORTANTE: Use 'localhost' para a web (w)
+      // Ajuste o IP se necessário
       const backendUrl = 'http://localhost:3000/api/auth/login';
-      // ⚠️ ... e use o seu IP para o celular
-      // const backendUrl = 'http://192.168.0.90:3000/api/auth/login'; 
 
       const response = await fetch(backendUrl, {
         method: 'POST',
@@ -56,7 +54,7 @@ export default function LoginScreen() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Erro ao validar usuário no servidor.');
+        throw new Error(data.message || 'Erro ao validar usuário.');
       }
       
       const userRole = data.user?.role;
@@ -67,21 +65,62 @@ export default function LoginScreen() {
       else if (userRole === 'professor' || userRole === 'teacher') {
         navigation.replace('ProfessorHome', { user: data.user }); 
       } else {
-        setErrorMessage('Perfil de usuário (role) inválido recebido do servidor.');
+        setErrorMessage('Perfil de usuário inválido.');
       }
 
     } catch (error) {
-
-      console.error("Erro no login:", error.code, error.message);
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      console.error("Erro login:", error.code, error.message);
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
         setErrorMessage('Email ou senha incorretos.');
-      } else if (error.message.includes('Failed to connect') || error.message.includes('Failed to fetch')) {
-        setErrorMessage('Não foi possível conectar ao servidor. Verifique a URL e se o backend está rodando.');
       } else {
-        setErrorMessage('Ocorreu um erro. Tente novamente.');
+        setErrorMessage('Ocorreu um erro ao conectar. Verifique sua internet ou o servidor.');
       }
     } finally {
       setIsLoading(false); 
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      if (Platform.OS === 'web') {
+        alert("Por favor, digite seu e-mail no campo acima primeiro.");
+      } else {
+        Alert.alert("Atenção", "Por favor, digite seu e-mail no campo acima primeiro.");
+      }
+      return;
+    }
+
+    const sendEmail = async () => {
+      try {
+        await sendPasswordResetEmail(auth, email);
+        if (Platform.OS === 'web') {
+          alert(`E-mail de recuperação enviado para: ${email}\nVerifique sua caixa de entrada (e spam).`);
+        } else {
+          Alert.alert("Sucesso", `E-mail de recuperação enviado para:\n${email}`);
+        }
+      } catch (error) {
+        console.error(error);
+        if (Platform.OS === 'web') {
+          alert("Erro: Não foi possível enviar o e-mail. Verifique se o endereço está correto.");
+        } else {
+          Alert.alert("Erro", "Não foi possível enviar o e-mail. Verifique se o endereço está correto.");
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (confirm(`Deseja redefinir a senha para o e-mail: ${email}?`)) {
+        sendEmail();
+      }
+    } else {
+      Alert.alert(
+        "Redefinir Senha",
+        `Deseja enviar um e-mail de redefinição para:\n${email}?`,
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Enviar", onPress: sendEmail }
+        ]
+      );
     }
   };
 
@@ -129,7 +168,8 @@ export default function LoginScreen() {
 
         <View style={styles.forgotPasswordContainer}>
           <Text style={styles.forgotPasswordText}>Esqueceu a senha? </Text>
-          <TouchableOpacity>
+          {/* Botão de recuperar senha */}
+          <TouchableOpacity onPress={handleForgotPassword}>
             <Text style={styles.linkText}>Clique aqui</Text>
           </TouchableOpacity>
         </View>
@@ -181,10 +221,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 10,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,

@@ -5,9 +5,11 @@ export async function login(req, res, next) {
     const { token } = req.body;
     if (!token) return res.status(400).json({ message: "Token não fornecido" });
 
+    // 1. Verifica o token no Firebase Auth
     const decoded = await admin.auth().verifyIdToken(token);
     const uid = decoded.uid;
 
+    // 2. Busca os dados completos no Firestore (onde está o classId)
     const userDoc = await db.collection("users").doc(uid).get();
     const userData = userDoc.exists ? userDoc.data() : {};
 
@@ -16,8 +18,8 @@ export async function login(req, res, next) {
       user: {
         uid,
         email: decoded.email || userData.email || null,
-        role: userData.role || "student",
-        name: userData.name || userData.displayName || "",
+        // Espalha todos os dados do banco (incluindo classId, points, etc)
+        ...userData 
       },
     });
   } catch (err) {
