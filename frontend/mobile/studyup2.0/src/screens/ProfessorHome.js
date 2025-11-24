@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  StyleSheet, Text, View, Platform, StatusBar, FlatList, TouchableOpacity, Modal, Alert 
+    StyleSheet, Text, View, Platform, StatusBar, FlatList, TouchableOpacity, Modal, Alert 
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { signOut, sendPasswordResetEmail } from "firebase/auth";
-import { auth } from '../config/firebaseConfig';
+import { auth } from '../config/firebaseConfig'; // Certifique-se que o caminho está correto
 
 // --- 1. DADOS MOCK (DIA - FIXO) ---
 const agendaDoDia = [
@@ -181,7 +181,7 @@ export default function ProfessorHome({ route }) {
         <Text style={styles.logo}>STUDY<Text style={styles.logoUp}>UP</Text></Text>
         <View style={styles.headerIcons}>
                   
-          {/* BOTÃO PERFIL */}
+          {/* BOTÃO PERFIL (O ícone que sumiu) */}
           <TouchableOpacity onPress={() => setProfileModalVisible(true)} style={{marginLeft: 15}}>
             <MaterialCommunityIcons name="account-circle" size={30} color="#1154D9" />
           </TouchableOpacity>
@@ -224,7 +224,7 @@ export default function ProfessorHome({ route }) {
         />
       </View>
 
-      {/* --- MODAL DE PERFIL --- */}
+      {/* --- MODAL DE PERFIL (O que contém as funções de sair/trocar senha) --- */}
       <Modal
         animationType="fade"
         transparent={true}

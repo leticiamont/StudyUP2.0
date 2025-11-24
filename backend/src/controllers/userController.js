@@ -170,3 +170,24 @@ export async function batchConfirmUsers(req, res, next) {
     res.status(500).json({ error: 'Erro ao salvar alunos.', details: err.message });
   }
 }
+/**
+ * @route POST /api/users/deduct-points
+ * @description Deduz uma quantidade de pontos do usuário logado.
+ */
+export async function deductPoints(req, res, next) {
+  try {
+    const { uid } = req.user; // UID vem do token verificado (usuário logado)
+    const { amount } = req.body;
+    
+    if (!amount || amount <= 0) {
+        return res.status(400).json({ error: "Quantidade de pontos inválida." });
+    }
+
+    const result = await userService.deductPoints(uid, amount);
+    res.status(200).json({ message: "Pontos deduzidos com sucesso.", newPoints: result.newPoints });
+
+  } catch (err) {
+    console.error('[userController:deductPoints] Erro:', err.message);
+    res.status(400).json({ error: err.message }); // Retorna o erro de 'Pontos insuficientes'
+  }
+}

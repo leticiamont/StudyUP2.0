@@ -12,77 +12,69 @@ const CONTENT_COLLECTION = 'contents';
 
 export const uploadContent = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'Nenhum ficheiro enviado.' });
+    let publicUrl = null;
+    let publicId = null; // <--- NOVO: Vamos guardar o ID do Cloudinary
+    let type = req.body.type || 'text'; 
+
+    if (req.file) {
+      console.log('Iniciando upload para o Cloudinary...');
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: 'auto',
+        folder: 'studyup_uploads',
+        use_filename: true,
+        unique_filename: false,
+      });
+      publicUrl = uploadResult.secure_url;
+      publicId = uploadResult.public_id; // <--- Pegamos o ID aqui
+      type = req.file.mimetype;
+      
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     }
-    
-    const file = req.file;
-    console.log('Iniciando upload para o Cloudinary...');
 
-    // Envia o arquivo local para o Cloudinary
-    const uploadResult = await cloudinary.uploader.upload(file.path, {
-      resource_type: 'auto',
-      folder: 'studyup_uploads',
-      use_filename: true,
-      unique_filename: false,
-    });
-
-    const publicUrl = uploadResult.secure_url;
-
-    // Salva os dados no Firestore
     const contentData = {
-      name: file.originalname,
-      type: file.mimetype,
-      url: publicUrl,
-      planId: req.body.planId || null,
-      classId: req.body.classId || null, 
-      authorId: req.user?.uid || 'anonym', 
+      name: req.body.name || "Sem título",
+      type: type,
+      url: publicUrl || req.body.url || null, 
+      public_id: publicId || null, // <--- Salvamos no Banco
+      content: req.body.content || null, 
+      gradeLevel: req.body.gradeLevel || null, 
+      teacherId: req.user.uid, 
+      classId: null, 
       createdAt: new Date().toISOString(),
     };
     
     const docRef = await db.collection(CONTENT_COLLECTION).add(contentData);
 
-    // Limpeza do arquivo local (pasta uploads do PC)
-    if (fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
-    }
-
-    console.log('Sucesso! Arquivo disponível em:', publicUrl);
+    console.log('Conteúdo salvo:', contentData.name);
     res.status(201).json({ id: docRef.id, ...contentData });
 
   } catch (error) {
     console.error('[contentController:upload] Erro:', error);
-    res.status(500).json({ error: 'Erro ao salvar no Cloudinary.', details: error.message });
+    res.status(500).json({ error: 'Erro ao salvar conteúdo.' });
   }
 };
 
-// 2. FUNÇÃO DE LISTAGEM (GET)
 export const getContents = async (req, res) => {
   try {
-    const { classId } = req.query;
-    const userId = req.user.uid; // O ID do professor logado
+    const { gradeLevel, classId } = req.query;
+    const { uid, role } = req.user;
 
     let query = db.collection(CONTENT_COLLECTION);
 
-    if (classId) {
-      // Se pedir de uma turma, mostra tudo da turma (filtro por turma)
-      query = query.where('classId', '==', classId);
+    if (role === 'student') {
+        if (gradeLevel) {
+            query = query.where('gradeLevel', '==', gradeLevel);
+        } else {
+             if (classId) query = query.where('classId', '==', classId);
+             else return res.status(200).json([]);
+        }
     } else {
-      // Se NÃO pedir turma (ou seja, "Meus Conteúdos" ou "Banco"),
-      // mostra APENAS o que ESSE professor criou.
-      query = query.where('authorId', '==', userId);
+        query = query.where('teacherId', '==', uid);
+        if (gradeLevel) query = query.where('gradeLevel', '==', gradeLevel);
     }
 
     const snapshot = await query.get();
-
-    if (snapshot.empty) {
-      return res.status(200).json([]);
-    }
-
-    const contents = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const contents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     res.status(200).json(contents);
 
@@ -92,28 +84,49 @@ export const getContents = async (req, res) => {
   }
 };
 
-// 3. FUNÇÃO DE DELETAR
+// --- DELETE ATUALIZADO (A MÁGICA ACONTECE AQUI) ---
 export const deleteContent = async (req, res) => {
   try {
     const { id } = req.params;
+    const docRef = db.collection(CONTENT_COLLECTION).doc(id);
     
-    // Deleta o registro do banco de dados
-    await db.collection(CONTENT_COLLECTION).doc(id).delete();
+    // 1. Busca o documento antes de apagar para pegar o public_id
+    const docSnap = await docRef.get();
     
-    // (Futuramente adicionar aqui o código para deletar do Cloudinary também)
+    if (!docSnap.exists) {
+        return res.status(404).json({ error: "Conteúdo não encontrado." });
+    }
+
+    const data = docSnap.data();
+
+    // 2. Se tiver um arquivo no Cloudinary (tem public_id), apaga lá primeiro
+    if (data.public_id) {
+        console.log(`Apagando do Cloudinary: ${data.public_id}`);
+        // resource_type: 'raw' é importante para PDFs, 'image' para imagens
+        // Para garantir, tentamos detectar ou usar 'auto' se a lib permitir, 
+        // mas geralmente destroy precisa do tipo certo.
+        // Vamos tentar apagar genérico:
+        await cloudinary.uploader.destroy(data.public_id, { resource_type: 'raw' }); 
+        // Nota: Se for imagem, pode precisar de uma segunda tentativa com 'image' se o 'raw' falhar,
+        // mas para PDFs 'raw' costuma ser o padrão do Cloudinary.
+    }
+
+    // 3. Apaga do Firebase (Firestore)
+    await docRef.delete();
     
     console.log(`Conteúdo ${id} apagado com sucesso.`);
     res.status(200).json({ message: "Conteúdo apagado." });
+
   } catch (error) {
-    console.error('[contentController:delete] Erro:', error.message);
+    console.error("Erro ao deletar:", error);
     res.status(500).json({ error: 'Erro ao apagar conteúdo.' });
   }
 };
+
 export const updateContent = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
-    await db.collection(CONTENT_COLLECTION).doc(id).update(updates);
+    await db.collection(CONTENT_COLLECTION).doc(id).update(req.body);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

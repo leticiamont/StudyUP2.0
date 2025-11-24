@@ -1,18 +1,19 @@
-import React, { useState } from 'react'; 
+import React, { useState, useEffect } from 'react'; 
 import { 
-    StyleSheet, 
-    Text, 
-    View, 
-    TouchableOpacity, 
-    Platform,
-    StatusBar,
-    ActivityIndicator 
+    StyleSheet, Text, View, TouchableOpacity, Platform, StatusBar, 
+    ActivityIndicator, TextInput, KeyboardAvoidingView, ScrollView, Modal, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { api } from '../service/apiService'; // Certifique-se de que a API está importada
 
-import CodeMirror from '@uiw/react-codemirror';
-import { darcula } from '@uiw/codemirror-theme-darcula'; 
-import { python } from '@codemirror/lang-python';
+// Importações condicionais para WEB
+let CodeMirror, darcula, python;
+if (Platform.OS === 'web') {
+  CodeMirror = require('@uiw/react-codemirror').default;
+  darcula = require('@uiw/codemirror-theme-darcula').darcula;
+  python = require('@codemirror/lang-python').python;
+}
 
 export default function AlunoIde() {
   
@@ -20,20 +21,34 @@ export default function AlunoIde() {
 `def saudar(nome):
     print(f"Olá, {nome}!")
 
-saudar("Aluno")`
+saudar("Mundo")`
   );
   
   const [terminalOutput, setTerminalOutput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // NOVOS ESTADOS PARA A DICA DA IA
+  const [hintModalVisible, setHintModalVisible] = useState(false);
+  const [hintText, setHintText] = useState('');
+  const [isHintLoading, setIsHintLoading] = useState(false);
+
+
+  // Função auxiliar para inserir texto (símbolo) no código
+  const insertSymbol = (symbol) => {
+    setCode(prev => prev + symbol);
+  };
+  const codeSymbols = ['    ', ':', '(', ')', '[', ']', '{', '}', '=', '"', "'", '#', '+', '-', '*', '/'];
+
 
   const handleRunCode = async () => {
     setIsLoading(true);
-    setTerminalOutput(''); 
+    setTerminalOutput('Executando...'); 
 
-    // ⚠️ Lembre-se: use 'localhost' para a web (w)
-    const backendUrl = 'http://localhost:3000/api/ia/run-python';
-    // ⚠️ ... e use o seu IP para o celular!
-    // const backendUrl = 'http://192.168.0.90:3000/api/ia/run-python'; 
+    // O backendUrl precisa ser o mesmo da sua configuração. Se o 'apiService.js' estiver correto,
+    // a rota direta é '/api/ia/run-python'
+    const backendUrl = Platform.OS === 'web' 
+        ? 'http://localhost:3000/api/ia/run-python'
+        : 'http://192.168.1.10:3000/api/ia/run-python'; // <--- VERIFIQUE SEU IP
 
     try {
       const response = await fetch(backendUrl, {
@@ -45,139 +60,277 @@ saudar("Aluno")`
       const data = await response.json();
 
       if (response.ok) { 
-        setTerminalOutput(data.output);
+        setTerminalOutput(data.output || 'Código executado sem retorno.');
       } else {
-        setTerminalOutput(data.error); 
+        setTerminalOutput(`Erro: ${data.error}`); 
       }
     } catch (err) {
-      setTerminalOutput('Erro de rede. O backend está a rodar?');
+      console.log(err);
+      setTerminalOutput('Erro de conexão.\nVerifique se o backend está rodando e se o IP está correto.');
     }
     setIsLoading(false);
   };
 
+  // --- FUNÇÃO DA DICA (ENVIA O CÓDIGO PARA A IA) ---
+  const handleGetHint = async () => {
+    setIsHintLoading(true);
+    setHintText('');
+    setHintModalVisible(true);
+
+    const prompt = `Analise o código Python abaixo e forneça uma DICA curta (máximo 2 frases) sobre o que o aluno deve fazer, ou o que pode estar errado, sem dar a resposta final. Se o código for muito básico, dê uma dica sobre o próximo passo em lógica de programação.
+    CÓDIGO: \n\n${code}`;
+    
+    try {
+        const data = await api.post('/api/ia/gerar', { prompt: prompt });
+        setHintText(data.resposta);
+    } catch (error) {
+        setHintText("Não foi possível conectar ao Assistente IA para obter a dica.");
+    } finally {
+        setIsHintLoading(false);
+    }
+  };
+
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#212121" />
       
-      {/* 1. CABEÇALHO (Header) */}
+      {/* 1. CABEÇALHO */}
       <View style={styles.header}>
-        <TouchableOpacity>
-          <MaterialCommunityIcons name="arrow-left" size={26} color="#fff" />
+        <View style={styles.headerLeft}>
+          <MaterialCommunityIcons name="code-tags" size={28} color="#BAF241" />
+          <Text style={styles.headerTitle}>Python IDE</Text>
+        </View>
+        
+        {/* BOTÃO DICA (MÁGICO) */}
+        <TouchableOpacity style={styles.helpBtn} onPress={handleGetHint}>
+          <MaterialCommunityIcons name="lightbulb-outline" size={20} color="#333" />
+          <Text style={styles.helpText}>Dica</Text>
         </TouchableOpacity>
-        <View style={styles.headerPoints}>
-          <MaterialCommunityIcons name="star" size={24} color="#FFC107" />
-          <Text style={styles.headerText}>1200</Text>
-        </View>
-        <View style={styles.headerIcons}>
-          <Text style={styles.headerText}>DICA</Text>
-          <MaterialCommunityIcons name="lightbulb-on" size={24} color="#FFC107" style={{marginLeft: 5}} />
-        </View>
       </View>
 
-      {/* 2. ÁREA DO EDITOR DE CÓDIGO */}
+      {/* 2. ÁREA DO EDITOR (Lógica Híbrida) */}
       <View style={styles.editorContainer}>
-        <CodeMirror
-          value={code} 
-          style={styles.codeEditor}
-          theme={darcula}
-          extensions={[python()]} 
-          onChange={(newCode) => setCode(newCode)}
-          basicSetup={{
-            lineNumbers: true, 
-            foldGutter: false,
-            autocompletion: true,
-          }}
-        />
+        {Platform.OS === 'web' ? (
+          <CodeMirror
+            value={code} 
+            height="100%"
+            theme={darcula}
+            extensions={[python()]} 
+            onChange={(newCode) => setCode(newCode)}
+            style={{fontSize: 16}}
+          />
+        ) : (
+          <TextInput
+              style={styles.mobileInput}
+              multiline
+              value={code}
+              onChangeText={setCode}
+              autoCapitalize="none"
+              autoCorrect={false}
+              placeholder="Escreva seu código Python aqui..."
+              placeholderTextColor="#666"
+              textAlignVertical="top"
+          />
+        )}
       </View>
 
-      {/* 3. BARRA DO TERMINAL (Footer) */}
-      <View style={styles.bottomBar}>
-        <Text style={styles.terminalText}>
-          {isLoading ? 'Executando...' : (terminalOutput || 'TERMINAL PYTHON')}
-        </Text>
-        <View style={styles.buttonGroup}>
+      {/* Barra de Atalhos (Só aparece no Mobile) */}
+      {Platform.OS !== 'web' && (
+        <View style={styles.toolbarContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always">
+            {codeSymbols.map((sym, index) => (
+              <TouchableOpacity 
+                key={index} 
+                style={styles.symbolBtn} 
+                onPress={() => insertSymbol(sym)}
+              >
+                <Text style={styles.symbolText}>{sym === '    ' ? 'TAB' : sym}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* 3. TERMINAL / CONSOLE */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.terminalContainer}
+      >
+        <View style={styles.terminalHeader}>
+          <Text style={styles.terminalLabel}>TERMINAL</Text>
+          {/* Botão Executar Flutuante */}
           <TouchableOpacity style={styles.runButton} onPress={handleRunCode} disabled={isLoading}>
             {isLoading ? (
-              <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <MaterialCommunityIcons name="play" size={20} color="#fff" />
+            <>
+              <MaterialCommunityIcons name="play" size={24} color="#fff" />
+              <Text style={styles.runText}>EXECUTAR</Text>
+            </>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.submitButton}>
-            <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
-          </TouchableOpacity>
         </View>
-      </View>
-    </View>
+        
+        <ScrollView style={styles.outputBox} nestedScrollEnabled={true}>
+          <Text style={styles.outputText}>{terminalOutput || 'Aguardando execução...'}</Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* --- MODAL DA DICA --- */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={hintModalVisible}
+        onRequestClose={() => setHintModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.hintBox}>
+            <View style={styles.hintHeader}>
+              <MaterialCommunityIcons name="lightbulb-on-outline" size={24} color="#FFC107" />
+              <Text style={styles.hintTitle}>Assistente de Dicas</Text>
+              <TouchableOpacity onPress={() => setHintModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#555" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.hintContent}>
+                {isHintLoading ? (
+                    <ActivityIndicator size="small" color="#1154D9" />
+                ) : (
+                    <Text style={styles.hintText}>{hintText}</Text>
+                )}
+            </ScrollView>
+            <Text style={styles.hintFooter}>Dicas usam pontos de experiência (XP).</Text>
+          </View>
+        </View>
+      </Modal>
+
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#212121',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0, 
-  },
+  container: { flex: 1, backgroundColor: '#212121' },
+  
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#333', 
+    backgroundColor: '#2b2b2b',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
   },
-  headerPoints: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  headerTitle: { color: '#fff', fontWeight: 'bold', fontSize: 18, marginLeft: 10 },
+  helpBtn: { 
+      flexDirection: 'row', alignItems: 'center', backgroundColor: '#BAF241', 
+      paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20 
   },
-  headerIcons: { 
-    flexDirection: 'row', 
-    alignItems: 'center' 
-  },
-  headerText: { 
-    color: '#fff', 
-    fontWeight: 'bold', 
-    marginRight: 5,
-    fontSize: 16
-  },
-  editorContainer: {
+  helpText: { fontWeight: 'bold', color: '#333', marginLeft: 4, fontSize: 12 },
+
+  // Editor Area
+  editorContainer: { flex: 1, backgroundColor: '#282a36' }, 
+  mobileInput: {
     flex: 1,
-    backgroundColor: '#2d2d2d', 
-  },
-  codeEditor: {
-    fontSize: 14,
+    color: '#f8f8f2', 
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 16,
+    padding: 20,
+    textAlignVertical: 'top',
   },
-  bottomBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#000',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+
+  // Toolbar
+  toolbarContainer: {
+    backgroundColor: '#333',
+    paddingVertical: 8,
+    paddingHorizontal: 5,
+    height: 50,
     borderTopWidth: 1,
     borderTopColor: '#444',
   },
-  terminalText: {
-    color: '#fff', 
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-    fontSize: 14,
-    flex: 1, // 🆕 Permite que o texto cresça e quebre a linha
+  symbolBtn: {
+    backgroundColor: '#444',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginHorizontal: 4,
+    justifyContent: 'center',
+    minWidth: 40,
+    alignItems: 'center',
   },
-  buttonGroup: {
+  symbolText: {
+    color: '#BAF241',
+    fontWeight: 'bold',
+    fontSize: 16,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+
+  // Terminal Area
+  terminalContainer: {
+    height: 200,
+    backgroundColor: '#1e1e1e',
+    borderTopWidth: 2,
+    borderTopColor: '#444',
+  },
+  terminalHeader: {
     flexDirection: 'row',
-    marginLeft: 10, // 🆕 Adiciona espaço entre o texto e os botões
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: '#252526',
+  },
+  terminalLabel: { color: '#aaa', fontWeight: 'bold', fontSize: 12 },
+  outputBox: {
+    flex: 1,
+    padding: 15,
+    backgroundColor: '#1e1e1e',
+  },
+  outputText: {
+    color: '#BAF241', 
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 14,
   },
   runButton: {
-    backgroundColor: '#1154D9', 
-    padding: 10,
-    borderRadius: 8,
-    marginRight: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1154D9',
+    paddingVertical: 6,
+    paddingHorizontal: 15,
+    borderRadius: 5,
   },
-  submitButton: {
-    backgroundColor: '#1154D9', 
-    padding: 10,
-    borderRadius: 8,
+  runText: { color: '#fff', fontWeight: 'bold', fontSize: 12, marginLeft: 5 },
+  
+  // MODAL DA DICA
+  modalOverlay: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(0, 0, 0, 0.6)' 
   },
+  hintBox: {
+    width: '90%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    elevation: 10,
+  },
+  hintHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 15 
+  },
+  hintTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#333', 
+    flex: 1, 
+    marginLeft: 10 
+  },
+  hintContent: { maxHeight: 150, marginBottom: 15 },
+  hintText: { fontSize: 15, color: '#333', lineHeight: 22 },
+  hintFooter: { fontSize: 12, color: '#888', fontStyle: 'italic', borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10 }
 });

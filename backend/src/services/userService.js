@@ -302,6 +302,33 @@ const userService = {
     await db.collection("users").doc(id).delete();
     return { message: "Usuário deletado com sucesso!" };
   },
+
+/**
+   * @description DEDUZ PONTOS DO USUÁRIO (XP) - FUNÇÃO DE GAMIFICAÇÃO
+   * @param uid (string) - ID do usuário
+   * @param amount (number) - Quantidade a deduzir
+   */
+  async deductPoints(uid, amount) {
+    const userRef = db.collection("users").doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      throw new Error("Usuário não encontrado.");
+    }
+    
+    const currentPoints = userDoc.data().points || 0;
+    const newPoints = currentPoints - amount;
+    
+    if (newPoints < 0) {
+        throw new Error("Pontos insuficientes.");
+    }
+
+    await userRef.update({
+        points: newPoints
+    });
+
+    return { newPoints };
+  },
 };
 
 export default userService;

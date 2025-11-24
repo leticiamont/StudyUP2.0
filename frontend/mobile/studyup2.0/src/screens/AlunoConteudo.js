@@ -1,131 +1,188 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  ScrollView, 
-  TouchableOpacity, 
-  ActivityIndicator, 
-  Alert, 
-  Linking 
+  StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, StatusBar, ActivityIndicator, Alert, Linking 
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { api } from '../service/apiService';
 
 export default function AlunoConteudo({ route }) {
   const user = route.params?.user || {};
+  const navigation = useNavigation();
   
-  // Lógica para pegar o nome e a turma
-  const userName = user.name || user.displayName || 'Aluno';
-  // Se o user não tiver classId, usamos uma string vazia ou tratamos o erro
-  const classId = user.classId; 
-  const points = user.points || 1200; // Usa pontos do usuário ou 1200 se não tiver
-
-  const [conteudos, setConteudos] = useState([]);
+  const [activeModule, setActiveModule] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const userGrade = user.gradeLevel || "Série Desconhecida";
 
-  const fetchConteudos = async () => {
+  const [modules, setModules] = useState([
+    { id: 1, title: 'Módulo Atual', subtitle: userGrade, progress: 100, status: 'active', color: '#1154D9' },
+    { id: 2, title: 'Próximo', subtitle: 'Em breve...', progress: 0, status: 'locked', color: '#A0A0A0' },
+  ]);
+
+  const [realTopics, setRealTopics] = useState([]);
+
+  const fetchData = async () => {
+    if (!user.gradeLevel) {
+        setIsLoading(false);
+        return;
+    }
 
     try {
       setIsLoading(true);
-      // Busca conteúdos (filtrando por turma se necessário, ou pegando todos)
-      const endpoint = classId ? `/api/contents?classId=${classId}` : '/api/contents';
-      const data = await api.get(endpoint);
       
-      // O backend retorna uma lista, garantimos que é um array
-      setConteudos(Array.isArray(data) ? data : []);
+      const contents = await api.get(`/api/contents?gradeLevel=${encodeURIComponent(user.gradeLevel)}`);
+      
+      const listaConteudos = Array.isArray(contents) ? contents : [];
+
+      const topicosFormatados = listaConteudos.map(item => ({
+        id: item.id,
+        moduleId: 1,
+        title: item.name,
+        type: item.type === 'text' ? 'text' : 'pdf', 
+        url: item.url, 
+        content: item.content,
+        completed: false,
+      }));
+
+      setRealTopics(topicosFormatados);
+
     } catch (error) {
-      console.error(error);
-      Alert.alert('Erro', 'Não foi possível carregar os conteúdos.');
+      console.log(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchConteudos();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [])
+  );
 
-  // Função para abrir o link/PDF
-  const handleOpenContent = (url) => {
-    if (url) {
-      Linking.openURL(url).catch(err => 
-        Alert.alert("Erro", "Não foi possível abrir este link.")
-      );
-    } else {
-      Alert.alert("Aviso", "Este conteúdo não possui um link válido.");
+  const handleOpenContent = (item) => {
+    // Fluxo para PDF
+    if (item.type === 'pdf') {
+       Alert.alert(
+         "Material de Estudo",
+         "O que deseja fazer?",
+         [
+           { text: "Ler PDF", onPress: () => navigation.navigate('ViewPDF', { url: item.url }) },
+           { 
+             text: "Gerar Quiz (IA)", 
+             // ENVIA URL do PDF
+             onPress: () => navigation.navigate('GameQuiz', { pdfUrl: item.url, title: item.title }) 
+           },
+           { text: "Cancelar", style: "cancel" }
+         ]
+       );
+    } 
+    // Fluxo para TEXTO (Materiais da IA/Lápis)
+    else if (item.type === 'text') {
+       Alert.alert(
+         item.title,
+         "O que deseja fazer?",
+         [
+           // Opção 1: Visualizar o texto (por enquanto via Alert)
+           { text: "Ler Material", onPress: () => Alert.alert(item.title, item.content || "Conteúdo não disponível.") },
+           { 
+             text: "Gerar Quiz (IA)", 
+             // MUDANÇA: ENVIA O TEXTO DA AULA DIRETO
+             onPress: () => navigation.navigate('GameQuiz', { textContent: item.content, title: item.title }) 
+           },
+           { text: "Cancelar", style: "cancel" }
+         ]
+       );
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* 1. CABEÇALHO (Header) */}
+      <StatusBar barStyle="dark-content" />
+      
       <View style={styles.header}>
-        <View style={styles.headerProfile}>
-          <MaterialCommunityIcons name="account-circle" size={28} color="#1154D9" />
-          <Text style={styles.headerText}>{userName.toUpperCase()}</Text>
-        </View>
-        <View style={styles.headerPoints}>
-          <MaterialCommunityIcons name="star" size={24} color="#FFC107" />
-          <Text style={styles.headerText}>{points}</Text>
-        </View>
-        <TouchableOpacity>
-          <MaterialCommunityIcons name="bell" size={26} color="#555" />
-        </TouchableOpacity>
+        <Text style={styles.screenTitle}>Aulas - {userGrade}</Text>
       </View>
 
-      {/* 2. Botão Dropdown Módulo (Fixo por enquanto) */}
-      <TouchableOpacity style={styles.moduleButton}>
-        <Text style={styles.moduleButtonText}>MÓDULO 1 - GERAL</Text>
-        <MaterialCommunityIcons name="chevron-down" size={24} color="#fff" />
-      </TouchableOpacity>
-
-      {/* 3. Abas de Filtro (Visual) */}
-      <View style={styles.filterTabs}>
-        <TouchableOpacity style={styles.filterChipActive}>
-          <Text style={styles.filterTextActive}>TODOS</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.filterChip}>
-          <Text style={styles.filterText}>PDF</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.filterChip}>
-          <Text style={styles.filterText}>VÍDEOS</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 4. Lista de Materiais Dinâmica */}
       {isLoading ? (
-        <ActivityIndicator size="large" color="#1154D9" style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color="#1154D9" style={{marginTop: 50}} />
       ) : (
-        <ScrollView style={styles.listContainer}>
-          {conteudos.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhum conteúdo encontrado para sua turma.</Text>
-          ) : (
-            conteudos.map((item) => (
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+          
+          <Text style={styles.sectionLabel}>Trilha de Aprendizado</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modulesScroll}>
+            {modules.map((mod) => (
               <TouchableOpacity 
-                key={item.id} 
-                style={styles.materialItem} 
-                onPress={() => handleOpenContent(item.url)}
+                key={mod.id} 
+                style={[
+                  styles.moduleCard, 
+                  { backgroundColor: mod.status === 'active' ? mod.color : '#E0E0E0' },
+                  activeModule === mod.id && { borderWidth: 3, borderColor: '#333' }
+                ]}
+                onPress={() => mod.status === 'active' && setActiveModule(mod.id)}
+                disabled={mod.status === 'locked'}
               >
-                {/* Ícone e Título */}
-                <View style={styles.materialInfo}>
-                  <MaterialCommunityIcons 
-                    // Escolhe ícone baseado no tipo do arquivo
-                    name={item.type?.includes('pdf') ? 'file-pdf-box' : 'file-document-outline'} 
-                    size={30} 
-                    color="#1154D9" 
-                  />
-                  <Text style={styles.materialTitle} numberOfLines={1}>
-                    {item.name}
+                <View style={styles.moduleHeader}>
+                  <Text style={[styles.moduleTitle, mod.status === 'locked' && {color:'#888'}]}>
+                    {mod.title}
                   </Text>
+                  {mod.status === 'active' && <MaterialCommunityIcons name="star" size={16} color="#FFC107" />}
                 </View>
                 
-                {/* Botão de Ação (Download/Abrir) */}
-                <MaterialCommunityIcons name="open-in-new" size={24} color="#555" />
+                <Text style={styles.moduleSub}>
+                  {mod.subtitle}
+                </Text>
+
+                <View style={styles.progressContainer}>
+                  <View style={[styles.progressBar, { width: `${mod.progress}%` }]} />
+                </View>
+                <Text style={styles.progressText}>
+                  {mod.id === 1 ? `${realTopics.length} materiais` : 'Bloqueado'}
+                </Text>
               </TouchableOpacity>
-            ))
-          )}
+            ))}
+          </ScrollView>
+
+          <View style={styles.topicsContainer}>
+            <Text style={styles.topicsTitle}>Conteúdo do Módulo</Text>
+            
+            {activeModule !== 1 ? (
+               <Text style={styles.emptyText}>Módulo bloqueado.</Text>
+            ) : realTopics.length === 0 ? (
+               <View style={{alignItems:'center', marginTop:20}}>
+                  <MaterialCommunityIcons name="book-open-page-variant" size={50} color="#ddd" />
+                  <Text style={styles.emptyText}>Nenhum conteúdo publicado para o {userGrade}.</Text>
+               </View>
+            ) : (
+               realTopics.map((item) => (
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={styles.topicItem} 
+                  onPress={() => handleOpenContent(item)}
+                >
+                  <View style={[styles.topicIcon, { backgroundColor: item.type === 'pdf' ? '#E91E6315' : '#1154D915' }]}>
+                    <MaterialCommunityIcons 
+                        name={item.type === 'pdf' ? "file-pdf-box" : "text-box-outline"} 
+                        size={24} 
+                        color={item.type === 'pdf' ? "#E91E63" : "#1154D9"} 
+                    />
+                  </View>
+                  
+                  <View style={styles.topicInfo}>
+                    <Text style={styles.topicTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.topicSub}>
+                        {item.type === 'pdf' ? 'Documento PDF' : 'Material de Leitura'}
+                    </Text>
+                  </View>
+
+                  <MaterialCommunityIcons name="chevron-right" size={24} color="#ccc" />
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+
+          <View style={{height: 40}} />
         </ScrollView>
       )}
     </SafeAreaView>
@@ -133,92 +190,25 @@ export default function AlunoConteudo({ route }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: '#fff' 
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  headerProfile: { flexDirection: 'row', alignItems: 'center' },
-  headerPoints: { flexDirection: 'row', alignItems: 'center' },
-  headerText: { 
-    marginLeft: 8, 
-    fontWeight: 'bold', 
-    fontSize: 16,
-    color: '#333'
-  },
-  moduleButton: {
-    backgroundColor: '#1154D9',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 25,
-    borderRadius: 30,
-    marginHorizontal: 20,
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  moduleButtonText: { 
-    color: '#fff', 
-    fontWeight: 'bold', 
-    fontSize: 16 
-  },
-  filterTabs: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-    marginVertical: 10,
-  },
-  filterChip: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-  },
-  filterChipActive: {
-    backgroundColor: '#333',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-  },
-  filterText: { color: '#555', fontWeight: 'bold' },
-  filterTextActive: { color: '#BAF241', fontWeight: 'bold' },
-  
-  listContainer: { paddingHorizontal: 20 },
-  
-  materialItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  materialInfo: { 
-    flexDirection: 'row', 
-    alignItems: 'center',
-    flex: 1, // Garante que o texto ocupe o espaço disponível
-    marginRight: 10
-  },
-  materialTitle: { 
-    fontSize: 16, 
-    marginLeft: 15,
-    color: '#333',
-    flexShrink: 1 // Evita que o texto estoure a tela
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#888',
-    fontSize: 16
-  }
+  safeArea: { flex: 1, backgroundColor: '#f4f6fa' },
+  header: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
+  screenTitle: { fontSize: 22, fontWeight: 'bold', color: '#333' },
+  container: { flex: 1 },
+  sectionLabel: { margin: 20, marginBottom: 10, fontSize: 16, fontWeight: 'bold', color: '#555' },
+  modulesScroll: { paddingLeft: 20, paddingBottom: 10 },
+  moduleCard: { width: 160, height: 120, borderRadius: 15, padding: 15, marginRight: 15, justifyContent: 'space-between', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+  moduleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  moduleTitle: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  moduleSub: { color: 'rgba(255,255,255,0.9)', fontSize: 12 },
+  progressContainer: { height: 4, backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 2, marginTop: 10 },
+  progressBar: { height: '100%', backgroundColor: '#BAF241', borderRadius: 2 },
+  progressText: { color: '#fff', fontSize: 10, marginTop: 4 },
+  topicsContainer: { padding: 20 },
+  topicsTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 15 },
+  topicItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 15, borderRadius: 12, marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, elevation: 1 },
+  topicIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  topicInfo: { flex: 1 },
+  topicTitle: { fontSize: 15, fontWeight: '600', color: '#333' },
+  topicSub: { fontSize: 12, color: '#888', marginTop: 2 },
+  emptyText: { textAlign: 'center', color: '#999', fontStyle: 'italic', marginTop: 10 }
 });

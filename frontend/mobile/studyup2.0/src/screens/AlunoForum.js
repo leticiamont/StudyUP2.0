@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react'; 
+import React, { useState, useEffect, useMemo, useCallback } from 'react'; 
 import { 
     StyleSheet, Text, View, ScrollView, TouchableOpacity, 
-    Platform, StatusBar, Modal, TextInput, Alert, ActivityIndicator
+    Platform, StatusBar, Modal, TextInput, Alert, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../service/apiService'; 
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native'; // Importei useFocusEffect
 import { PostCard } from '../components/PostCard'; 
 
 export default function AlunoForum({ route }) {
@@ -16,6 +16,7 @@ export default function AlunoForum({ route }) {
 
   const [allPosts, setAllPosts] = useState([]); 
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); // Estado para o "pull-to-refresh"
   const [modalVisible, setModalVisible] = useState(false); 
   const [newPostText, setNewPostText] = useState('');
   const [filter, setFilter] = useState('all'); 
@@ -24,10 +25,12 @@ export default function AlunoForum({ route }) {
 
   const fetchPosts = async () => {
     try {
-      setIsLoading(true);
+      // Só ativa o loading de tela cheia se NÃO estiver puxando para atualizar
+      if (!refreshing) setIsLoading(true);
+      
       const endpoint = userClassId 
         ? `/api/forum/posts?turmaId=${userClassId}` 
-        : '/api/forum/posts'; // Fallback se não tiver turma
+        : '/api/forum/posts'; 
         
       const data = await api.get(endpoint); 
       setAllPosts(Array.isArray(data) ? data : []); 
@@ -35,8 +38,22 @@ export default function AlunoForum({ route }) {
       Alert.alert('Erro', 'Não foi possível carregar os posts.');
     } finally {
       setIsLoading(false);
+      setRefreshing(false); // Para a animação do refresh
     }
   };
+  
+  // Função chamada quando o usuário puxa a tela para baixo
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchPosts();
+  }, []);
+
+  // Garante que atualiza ao voltar para a tela (ex: depois de comentar num post)
+  useFocusEffect(
+    useCallback(() => {
+      fetchPosts();
+    }, [])
+  );
   
   const handleCreatePost = async () => {
     if (newPostText.trim().length === 0) {
@@ -51,12 +68,11 @@ export default function AlunoForum({ route }) {
     try {
       await api.post('/api/forum/posts', { 
         text: newPostText,
-        // O post nasce vinculado à turma do aluno
         turmaId: userClassId 
       });
       setModalVisible(false); 
       setNewPostText(''); 
-      fetchPosts(); 
+      onRefresh(); // Atualiza a lista imediatamente
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível criar o post.');
     }
@@ -82,10 +98,6 @@ export default function AlunoForum({ route }) {
       Alert.alert('Erro', 'Não foi possível curtir o post.');
     }
   };
-
-  useEffect(() => {
-    fetchPosts();
-  }, []); 
 
   const filteredPosts = useMemo(() => {
     let posts = allPosts;
@@ -139,6 +151,7 @@ export default function AlunoForum({ route }) {
         />
       </View>
 
+      {/* MANTEVE SEU LAYOUT DE ABAS */}
       <View style={styles.filterTabs}>
         <TouchableOpacity 
           style={filter === 'all' ? styles.filterTabActive : styles.filterTab}
@@ -154,8 +167,13 @@ export default function AlunoForum({ route }) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.listContainer}>
-        {isLoading ? (
+      <ScrollView 
+        style={styles.listContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1154D9']} />
+        }
+      >
+        {isLoading && !refreshing ? (
           <ActivityIndicator size="large" color="#1154D9" style={{marginTop: 20}} />
         ) : (
           filteredPosts.length === 0 ? (
@@ -165,12 +183,13 @@ export default function AlunoForum({ route }) {
                 <PostCard 
                 key={post.id}
                 post={post} 
-                onPress={() => navigation.navigate('PostDetalhe', { post: post })}
+                onPress={() => navigation.navigate('PostDetalhe', { post: post, user: user })}
                 onLike={() => handleLikePost(post.id)}
                 />
             ))
           )
         )}
+        <View style={{height: 20}} />
       </ScrollView>
 
       <Modal
@@ -205,6 +224,7 @@ export default function AlunoForum({ route }) {
   );
 }
 
+// Seus estilos originais mantidos
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#f4f6fa', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },

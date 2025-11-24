@@ -9,7 +9,7 @@ import ProfessorTabs from './src/screens/ProfessorTabs';
 import ProfessorDetalheTurma from './src/screens/ProfessorDetalheTurma';
 import EditorPlanoAula from './src/screens/EditorPlanoAula';
 import ViewPDF from "./src/screens/ViewPDF";
-
+import GameQuiz from './src/screens/GameQuiz';
 
 const Stack = createNativeStackNavigator();
 
@@ -56,6 +56,11 @@ export default function App() {
         <Stack.Screen 
         name="ViewPDF" component={ViewPDF} 
       
+        />
+        <Stack.Screen 
+          name="GameQuiz" 
+          component={GameQuiz} 
+          options={{ headerShown: false }} 
         />
 
       </Stack.Navigator>
