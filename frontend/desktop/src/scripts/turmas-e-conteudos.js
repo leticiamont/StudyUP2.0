@@ -8,18 +8,48 @@ let currentEditingId = null;
 let allStudentsCache = []; 
 let actionToConfirm = null; 
 
+// Mapa de Níveis -> Anos (Fonte da Verdade)
 const schoolYearsMap = {
   "Fundamental 1": ["1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano"],
   "Fundamental 2": ["6º Ano", "7º Ano", "8º Ano", "9º Ano"],
   "Ensino Médio": ["1ª Série", "2ª Série", "3ª Série"]
 };
 
+// --- FUNÇÃO DE CONTROLE DE ABA (RESOLVE O REFERENCERROR) ---
+// Esta função é definida no escopo principal do módulo.
+function switchTab(targetTabId) {
+    const tabLinks = document.querySelectorAll('.sub-menu-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // 1. Altera as classes ativas
+    tabContents.forEach(content => content.classList.remove('active'));
+    tabLinks.forEach(link => link.classList.remove('active'));
+    
+    const targetLink = document.querySelector(`.sub-menu-item[data-tab="${targetTabId}"]`);
+    const targetContent = document.getElementById(`tab-content-${targetTabId}`);
+    
+    if (targetLink && targetContent) {
+        targetLink.classList.add('active');
+        targetContent.classList.add('active');
+    }
+    
+    // 2. Carrega os dados da aba correta
+    if (targetTabId === 'turmas') {
+        const tabelaTurmasBody = document.getElementById('tabelaTurmasBody');
+        if (tabelaTurmasBody) loadTurmas();
+    }
+    else if (targetTabId === 'planos') {
+        const tabelaPlanosBody = document.getElementById('tabelaPlanosBody');
+        if (tabelaPlanosBody) loadPlanos();
+    }
+}
+// --- FIM DA FUNÇÃO DE CONTROLE DE ABA ---
+
+
 document.addEventListener('componentsLoaded', () => {
-  // --- Seletores Gerais ---
-  const tabLinks = document.querySelectorAll('.sub-menu-item');
-  const tabContents = document.querySelectorAll('.tab-content');
-  
-  // --- Seletores Turmas ---
+  console.log('[turmas-e-conteudos.js] Evento "componentsLoaded" recebido.');
+
+  // --- 1. Seleção (Elementos) ---
   const tabelaTurmasBody = document.getElementById('tabelaTurmasBody');
   const openModalTurmaBtn = document.getElementById('openModalTurmaBtn');
   const modalTurma = document.getElementById('modalTurma');
@@ -27,56 +57,44 @@ document.addEventListener('componentsLoaded', () => {
   const formTurma = document.getElementById('formTurma');
   const turmaModalTitle = document.getElementById('turmaModalTitle');
   const turmaModalSubmitBtn = document.getElementById('turmaModalSubmitBtn');
-  
   const inputEducationLevel = document.getElementById('turma-educationLevel');
   const inputSchoolYear = document.getElementById('turma-schoolYear');
   const selectTeacher = document.getElementById('turma-teacherId');
   const selectPlan = document.getElementById('turma-planId');
   const studentContainer = document.getElementById('student-selection-container');
-  
   const turmasSearch = document.getElementById('turmas-search');
   const turmasFilterGrade = document.getElementById('turmas-filter-grade');
   const turmasFilterSort = document.getElementById('turmas-filter-sort');
 
-  // --- Seletores Planos ---
   const tabelaPlanosBody = document.getElementById('tabelaPlanosBody');
   const openModalPlanoBtn = document.getElementById('openModalPlanoBtn');
   const modalPlano = document.getElementById('modalPlano');
   const closeModalPlanoBtn = document.getElementById('closeModalPlanoBtn');
   const formPlano = document.getElementById('formPlano');
-  const planoNameInput = document.getElementById('plano-name');
   const planoGradeInput = document.getElementById('plano-gradeLevel');
   const planoYearInput = document.getElementById('plano-schoolYear');
   const planoFileInput = document.getElementById('plano-file');
-  
   const planosSearch = document.getElementById('planos-search');
   const planosFilterGrade = document.getElementById('planos-filter-grade');
 
-  // --- Seletores Modais Genéricos ---
   const modalStatus = document.getElementById('modalStatus');
   const statusTitle = document.getElementById('statusModalTitle');
   const statusMsg = document.getElementById('statusModalMessage');
   const closeStatusBtn = document.getElementById('closeStatusModalBtn');
   const okStatusBtn = document.getElementById('okStatusModalBtn');
-
   const modalConfirmacao = document.getElementById('modalConfirmacao');
   const confirmacaoMessage = document.getElementById('confirmacaoMessage');
   const closeConfirmacaoBtn = document.getElementById('closeConfirmacaoModalBtn');
   const cancelarConfirmacaoBtn = document.getElementById('cancelarConfirmacaoBtn');
   const confirmarAcaoBtn = document.getElementById('confirmarAcaoBtn');
 
-  // --- Seletores Modal PDF (NOVO) ---
   const modalViewPDF = document.getElementById('modalViewPDF');
   const pdfViewerFrame = document.getElementById('pdfViewerFrame');
   const closePdfBtn = document.getElementById('closePdfBtn');
   const pdfTitle = document.getElementById('pdfTitle');
 
-  if (!tabelaTurmasBody || !modalTurma || !modalStatus || !modalConfirmacao) {
-      console.error("Elementos essenciais não encontrados.");
-      return;
-  }
 
-  // --- Helpers Modais ---
+  // --- Funções Auxiliares de Modal ---
   const showStatus = (title, msg) => {
     statusTitle.textContent = title;
     statusMsg.textContent = msg;
@@ -94,57 +112,37 @@ document.addEventListener('componentsLoaded', () => {
     actionToConfirm = null;
   };
 
-  // --- Helper PDF (CORRIGIDO) ---
   const openPDF = (url, title) => {
     if (!modalViewPDF) return;
-    
     pdfTitle.textContent = title || "Visualizando Arquivo";
-    
-    // O TRUQUE: Usar o Google Viewer para renderizar sem baixar
-    // O 'embedded=true' remove a interface do Google e deixa só o PDF
     const googleViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
-    
     pdfViewerFrame.src = googleViewerUrl;
     modalViewPDF.style.display = 'flex';
   };
-  
   const closePDF = () => {
     if (!modalViewPDF) return;
     modalViewPDF.style.display = 'none';
-    pdfViewerFrame.src = "about:blank"; // Limpa para não continuar carregando
+    pdfViewerFrame.src = "about:blank";
+  };
+
+
+  // --- Lógica de Turmas ---
+  
+  const populateDropdowns = async () => {
+    try {
+      const [teachers, plans, students] = await Promise.all([
+        api.get('/api/users?role=teacher'),
+        api.get('/api/plans?viewMode=admin'),
+        api.get('/api/users?role=student')
+      ]);
+      allStudentsCache = students;
+      selectTeacher.innerHTML = '<option value="">Selecione...</option>';
+      teachers.forEach(t => selectTeacher.innerHTML += `<option value="${t.id}">${t.displayName}</option>`);
+      selectPlan.innerHTML = '<option value="">Selecione (Opcional)</option>';
+      plans.forEach(p => selectPlan.innerHTML += `<option value="${p.id}">${p.name}</option>`);
+    } catch (error) { showStatus('Erro', 'Falha ao carregar Professores/Planos.'); }
   };
   
-  // --- Abas ---
-  const switchTab = (t) => {
-    tabContents.forEach(c => c.classList.remove('active'));
-    tabLinks.forEach(l => l.classList.remove('active'));
-    document.querySelector(`.sub-menu-item[data-tab="${t}"]`).classList.add('active');
-    document.getElementById(`tab-content-${t}`).classList.add('active');
-    if (t === 'turmas') loadTurmas();
-    else if (t === 'planos') loadPlanos();
-  };
-  tabLinks.forEach(l => l.addEventListener('click', (e) => { 
-    e.preventDefault(); 
-    switchTab(e.target.dataset.tab); 
-  }));
-
-  // --- Turmas (Lógica) ---
-  inputEducationLevel.addEventListener('change', () => {
-    const level = inputEducationLevel.value;
-    inputSchoolYear.innerHTML = '<option value="">Selecione...</option>';
-    if (level && schoolYearsMap[level]) {
-      inputSchoolYear.disabled = false;
-      schoolYearsMap[level].forEach(year => {
-        inputSchoolYear.innerHTML += `<option value="${year}">${year}</option>`;
-      });
-    } else {
-      inputSchoolYear.disabled = true;
-    }
-    renderStudentList(); 
-  });
-
-  inputSchoolYear.addEventListener('change', () => renderStudentList([]));
-
   function renderStudentList(studentIdsPreSelected = []) {
     if (!Array.isArray(studentIdsPreSelected)) studentIdsPreSelected = [];
     const selectedLevel = inputEducationLevel.value;
@@ -179,21 +177,6 @@ document.addEventListener('componentsLoaded', () => {
     });
   }
 
-  const populateDropdowns = async () => {
-    try {
-      const [teachers, plans, students] = await Promise.all([
-        api.get('/api/users?role=teacher'),
-        api.get('/api/plans'),
-        api.get('/api/users?role=student')
-      ]);
-      allStudentsCache = students;
-      selectTeacher.innerHTML = '<option value="">Selecione...</option>';
-      teachers.forEach(t => selectTeacher.innerHTML += `<option value="${t.id}">${t.displayName}</option>`);
-      selectPlan.innerHTML = '<option value="">Selecione (Opcional)</option>';
-      plans.forEach(p => selectPlan.innerHTML += `<option value="${p.id}">${p.name}</option>`);
-    } catch (error) { console.error(error); }
-  };
-
   const loadTurmas = async () => {
     tabelaTurmasBody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
     const params = new URLSearchParams();
@@ -218,7 +201,10 @@ document.addEventListener('componentsLoaded', () => {
           <td>${t.planName || 'Nenhum'}</td>
           <td>${horario}</td>
           <td>${t.studentCount || 0}</td>
-          <td><button class="btn btn-secondary btn-sm edit-btn" data-id="${t.id}">Editar</button></td>
+          <td>
+            <button class="btn btn-secondary btn-sm edit-btn" data-id="${t.id}">Editar</button>
+            <button class="btn btn-danger btn-sm delete-turma-btn" data-id="${t.id}" style="margin-left: 4px;">Apagar</button>
+          </td>
         `;
         tabelaTurmasBody.appendChild(tr);
       });
@@ -234,16 +220,11 @@ document.addEventListener('componentsLoaded', () => {
     studentContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => selectedStudents.push(cb.value));
 
     const dados = {
-      name: formData.get('name'),
-      educationLevel: formData.get('educationLevel'),
-      schoolYear: formData.get('schoolYear'),
-      daysOfWeek: selectedDays,
-      startTime: formData.get('startTime'),
-      endTime: formData.get('endTime'),
-      teacherId: formData.get('teacherId'),
-      planId: formData.get('planId'),
-      studentIds: selectedStudents,
-      gradeLevel: formData.get('educationLevel'),
+      name: formData.get('name'), educationLevel: formData.get('educationLevel'),
+      schoolYear: formData.get('schoolYear'), daysOfWeek: selectedDays,
+      startTime: formData.get('startTime'), endTime: formData.get('endTime'),
+      teacherId: formData.get('teacherId'), planId: formData.get('planId'),
+      studentIds: selectedStudents, gradeLevel: formData.get('educationLevel'),
       schedule: `${selectedDays.join(', ')} ${formData.get('startTime')}-${formData.get('endTime')}`
     };
 
@@ -255,7 +236,7 @@ document.addEventListener('componentsLoaded', () => {
         await api.post('/api/classes', dados);
         showStatus('Sucesso', 'Turma criada!');
       }
-      modalTurma.style.display = 'none';
+      closeModalTurma();
       loadTurmas();
     } catch (error) { showStatus('Erro', error.message); }
   };
@@ -299,9 +280,17 @@ document.addEventListener('componentsLoaded', () => {
     } catch (e) { showStatus('Erro', e.message); }
   };
 
-  // --- Planos (Lógica) ---
-  if (planoGradeInput) {
-    planoGradeInput.addEventListener('change', () => {
+  const closeModalTurma = () => {
+    modalTurma.style.display = 'none';
+    formTurma.reset();
+    currentEditingId = null; 
+  };
+  
+  // --- Lógica dos Planos ---
+  if (document.getElementById('plano-gradeLevel')) { 
+    document.getElementById('plano-gradeLevel').addEventListener('change', () => {
+      const planoGradeInput = document.getElementById('plano-gradeLevel');
+      const planoYearInput = document.getElementById('plano-schoolYear');
       const level = planoGradeInput.value;
       planoYearInput.innerHTML = '<option value="">Selecione...</option>';
       if (level && schoolYearsMap[level]) {
@@ -318,8 +307,8 @@ document.addEventListener('componentsLoaded', () => {
   const loadPlanos = async () => {
     tabelaPlanosBody.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
     const params = new URLSearchParams();
-    if (planosSearch.value) params.append('search', planosSearch.value);
-    if (planosFilterGrade.value) params.append('gradeLevel', planosFilterGrade.value);
+    if (document.getElementById('planos-search').value) params.append('search', document.getElementById('planos-search').value);
+    if (document.getElementById('planos-filter-grade').value) params.append('gradeLevel', document.getElementById('planos-filter-grade').value);
 
     try {
       const planos = await api.get(`/api/plans?viewMode=admin&${params.toString()}`);
@@ -329,11 +318,8 @@ document.addEventListener('componentsLoaded', () => {
       }
       planos.forEach(p => {
          const tr = document.createElement('tr');
-         
-         // Botão/Link "Ver PDF" (Se tiver URL)
          let btnPdf = '<span style="color:#ccc">Sem arquivo</span>';
          if (p.pdfUrl) {
-             // Usa uma classe 'view-pdf-btn' para pegarmos o clique
              btnPdf = `<button class="btn-link view-pdf-btn" data-url="${p.pdfUrl}" data-name="${p.name}" style="background:none;border:none;color:#007BFF;cursor:pointer;text-decoration:underline;">Ver PDF</button>`;
          }
 
@@ -352,8 +338,8 @@ document.addEventListener('componentsLoaded', () => {
 
   const handlePlanoFormSubmit = async (e) => {
     e.preventDefault();
-    const file = planoFileInput.files[0];
-    if (!file) { showStatus('Aviso', "Selecione um arquivo PDF."); return; }
+    const file = document.getElementById('plano-file').files[0];
+    if (!file) { showStatus('Aviso', "Selecione um arquivo PDF."); return; } 
 
     const btn = formPlano.querySelector('button');
     const txtOriginal = btn.textContent;
@@ -361,13 +347,22 @@ document.addEventListener('componentsLoaded', () => {
     btn.disabled = true;
 
     const formData = new FormData();
-    formData.append('name', planoNameInput.value);
-    formData.append('gradeLevel', planoGradeInput.value);
-    formData.append('schoolYear', planoYearInput.value);
+    formData.append('name', document.getElementById('plano-name').value);
+    formData.append('gradeLevel', document.getElementById('plano-gradeLevel').value);
+    formData.append('schoolYear', document.getElementById('plano-schoolYear').value);
     formData.append('pdfFile', file);
 
     try {
-      await api.post('/api/plans', formData);
+      const token = localStorage.getItem("authToken");
+      const response = await fetch('http://localhost:3000/api/plans', {
+          method: 'POST',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+          body: formData
+      });
+      
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || result.message || 'Falha na rede.');
+
       showStatus('Sucesso', 'Plano criado com sucesso!');
       modalPlano.style.display = 'none';
       loadPlanos();
@@ -381,15 +376,26 @@ document.addEventListener('componentsLoaded', () => {
 
   // --- Listeners ---
   openModalTurmaBtn.addEventListener('click', openModalCriar);
-  document.getElementById('closeModalTurmaBtn').addEventListener('click', () => modalTurma.style.display = 'none');
+  closeModalTurmaBtn.addEventListener('click', () => modalTurma.style.display = 'none');
   formTurma.addEventListener('submit', handleTurmaFormSubmit);
   
   tabelaTurmasBody.addEventListener('click', (e) => {
     if (e.target.classList.contains('edit-btn')) openModalEditar(e.target.dataset.id);
+    if (e.target.classList.contains('delete-turma-btn')) {
+        const id = e.target.dataset.id;
+        showConfirm("Tem certeza que quer APAGAR esta turma? Isso desvincula todos os alunos.", async () => {
+             try {
+                await api.delete(`/api/classes/${id}`);
+                showStatus('Sucesso', 'Turma apagada.');
+                loadTurmas();
+             } catch(e) { showStatus('Erro', e.message); }
+        });
+    }
   });
 
   turmasSearch.addEventListener('input', loadTurmas);
   turmasFilterGrade.addEventListener('change', loadTurmas);
+  turmasFilterSort.addEventListener('change', loadTurmas);
   
   // Planos
   openModalPlanoBtn.addEventListener('click', () => {
@@ -401,7 +407,6 @@ document.addEventListener('componentsLoaded', () => {
   formPlano.addEventListener('submit', handlePlanoFormSubmit);
   
   tabelaPlanosBody.addEventListener('click', async (e) => {
-    // Apagar
     if (e.target.classList.contains('delete-btn-plano')) {
       const id = e.target.dataset.id;
       showConfirm("Tem certeza que quer apagar este plano?", async () => {
@@ -412,7 +417,6 @@ document.addEventListener('componentsLoaded', () => {
         } catch(e) { showStatus('Erro', e.message); }
       });
     }
-    // Ver PDF (NOVO)
     if (e.target.classList.contains('view-pdf-btn')) {
         e.preventDefault();
         const url = e.target.dataset.url;
@@ -421,10 +425,21 @@ document.addEventListener('componentsLoaded', () => {
     }
   });
 
-  planosSearch.addEventListener('input', loadPlanos);
-  planosFilterGrade.addEventListener('change', loadPlanos);
+  planoGradeInput.addEventListener('change', () => {
+    const level = planoGradeInput.value;
+    planoYearInput.innerHTML = '<option value="">Selecione...</option>';
+    if (level && schoolYearsMap[level]) {
+      planoYearInput.disabled = false;
+      schoolYearsMap[level].forEach(year => {
+        planoYearInput.innerHTML += `<option value="${year}">${year}</option>`;
+      });
+    } else {
+      planoYearInput.disabled = true;
+    }
+  });
 
-  // Modais Genéricos
+
+  // Modais Genéricos Listeners
   closeStatusBtn.addEventListener('click', closeStatus);
   okStatusBtn.addEventListener('click', closeStatus);
   closeConfirmacaoBtn.addEventListener('click', closeConfirm);
@@ -434,8 +449,8 @@ document.addEventListener('componentsLoaded', () => {
     closeConfirm();
   });
 
-  // Modal PDF (NOVO)
-  if (closePdfBtn) closePdfBtn.addEventListener('click', closePDF);
+  const closePdfBtnElement = document.getElementById('closePdfBtn');
+  if (closePdfBtnElement) closePdfBtnElement.addEventListener('click', closePDF);
 
   // Init
   const urlParams = new URLSearchParams(window.location.search);

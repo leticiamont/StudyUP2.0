@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth"; // Importa login do Firebase
-import { auth } from "../config/firebaseConfig"; // Importa nossa config
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../config/firebaseConfig";
 import axios from "axios";
 import "./LoginPage.css";
 
@@ -18,32 +18,36 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      // 1. Login no Firebase (Igual ao Mobile)
+      // 1. Login no Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, senha);
       const user = userCredential.user;
       const token = await user.getIdToken();
 
-      // 2. Envia o Token para o Backend Node.js
-      // OBS: Corrigido para porta 3000 e rota /api/auth/login
+      // 2. Envia o Token para o Backend para pegar os dados do banco (Role/ClassId)
       const response = await axios.post("http://localhost:3000/api/auth/login", {
         token: token,
       });
 
       console.log("Login Sucesso:", response.data);
 
-      // 3. Salva o token e Redireciona
+      // 3. Verifica e Redireciona
       if (response.status === 200) {
-        localStorage.setItem("token", token);
-        // Opcional: Salvar dados do usuário se precisar exibir no dashboard
-        localStorage.setItem("userData", JSON.stringify(response.data.user));
+        const userData = response.data.user;
         
-        navigate("/dashboardP");
+        localStorage.setItem("token", token);
+        localStorage.setItem("userData", JSON.stringify(userData));
+        
+        // 🚨 LÓGICA DE REDIRECIONAMENTO 🚨
+        if (userData.role === 'student' || userData.role === 'aluno') {
+            navigate("/dashboardA"); // Vai para o Dashboard do Aluno
+        } else {
+            navigate("/dashboardP"); // Vai para o Dashboard do Professor
+        }
       }
 
     } catch (error) {
       console.error("Erro ao fazer login:", error);
       
-      // Tratamento de erros amigável
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
         setErro("E-mail ou senha incorretos.");
       } else if (error.code === 'auth/too-many-requests') {
@@ -100,7 +104,6 @@ function LoginPage() {
       </div>
 
       <div className="login-illustration">
-        {/* Se a imagem não existir, não quebrará o layout */}
         <img src="/images/school-16.svg" alt="Ilustração" onError={(e) => e.target.style.display='none'} />
       </div>
     </div>

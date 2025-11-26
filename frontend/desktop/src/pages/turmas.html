@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyUp Admin - Turmas e Conteúdos</title>
+  <title>StudyUp Admin - Gerenciar Turmas</title>
   
   <link rel="stylesheet" href="../styles/layout.css">
   <link rel="stylesheet" href="../styles/main.css">
@@ -17,85 +17,44 @@
 
   <main class="content">
     
-    <nav class="sub-menu">
-      <a href="#" class="sub-menu-item active" data-tab="turmas">Turmas</a>
-      <a href="#" class="sub-menu-item" data-tab="planos">Planos de aula</a>
-    </nav>
+    <div class="header">
+      <h1>Gerenciamento de Turmas</h1>
+      <button id="openModalTurmaBtn" class="btn btn-primary">Adicionar</button>
+    </div>
 
-    <section id="tab-content-turmas" class="tab-content active">
-      <div class="header">
-        <h1>Turmas</h1>
-        <button id="openModalTurmaBtn" class="btn btn-primary">Adicionar</button>
+    <div class="filters">
+      <div class="search-bar">
+        <input type="text" id="turmas-search" placeholder="Buscar por nome da turma...">
       </div>
+      <select id="turmas-filter-grade" class="filter-select">
+        <option value="">Filtrar por Nível</option>
+        <option value="Fundamental 1">Fundamental 1</option>
+        <option value="Fundamental 2">Fundamental 2</option>
+        <option value="Ensino Médio">Ensino Médio</option>
+      </select>
+      <select id="turmas-filter-sort" class="filter-select">
+        <option value="desc">Mais novas primeiro</option>
+        <option value="asc">Mais antigas primeiro</option>
+      </select>
+    </div>
 
-      <div class="filters">
-        <div class="search-bar">
-          <input type="text" id="turmas-search" placeholder="Buscar por nome da turma...">
-        </div>
-        <select id="turmas-filter-grade" class="filter-select">
-          <option value="">Filtrar por Nível</option>
-          <option value="Fundamental 1">Fundamental 1</option>
-          <option value="Fundamental 2">Fundamental 2</option>
-          <option value="Ensino Médio">Ensino Médio</option>
-        </select>
-        <select id="turmas-filter-sort" class="filter-select">
-          <option value="desc">Mais novas primeiro</option>
-          <option value="asc">Mais antigas primeiro</option>
-        </select>
-      </div>
-
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>NOME DA TURMA</th>
-              <th>PROFESSOR</th>
-              <th>NÍVEL/ANO</th>
-              <th>PLANO DE AULA</th>
-              <th>HORÁRIO</th>
-              <th>Nº ALUNOS</th>
-              <th>AÇÕES</th>
-            </tr>
-          </thead>
-          <tbody id="tabelaTurmasBody">
-            </tbody>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>NOME DA TURMA</th>
+            <th>PROFESSOR</th>
+            <th>NÍVEL/ANO</th>
+            <th>PLANO DE AULA</th>
+            <th>HORÁRIO</th>
+            <th>Nº ALUNOS</th>
+            <th>AÇÕES</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaTurmasBody">
+          </tbody>
         </table>
       </div>
-    </section>
-
-    <section id="tab-content-planos" class="tab-content">
-       <div class="header">
-        <h1>Planos de aula</h1>
-        <button id="openModalPlanoBtn" class="btn btn-primary">Adicionar</button>
-      </div>
-
-      <div class="filters">
-        <div class="search-bar">
-          <input type="text" id="planos-search" placeholder="Buscar por nome do plano...">
-        </div>
-        <select id="planos-filter-grade" class="filter-select">
-          <option value="">Filtrar por Nível</option>
-          <option value="Fundamental 1">Fundamental 1</option>
-          <option value="Fundamental 2">Fundamental 2</option>
-          <option value="Ensino Médio">Ensino Médio</option>
-        </select>
-      </div>
-
-       <div class="table-container">
-        <table>
-          <thead>
-            <tr>              
-              <th>NOME DO PLANO</th>
-              <th>NÍVEL ESCOLAR</th>
-              <th>ARQUIVO (PDF)</th>
-              <th>AÇÕES</th>
-            </tr>
-          </thead>
-          <tbody id="tabelaPlanosBody">
-            </tbody>
-        </table>
-      </div>
-    </section>
   </main>
 
   <div id="modalTurma" class="modal-overlay">
@@ -173,56 +132,6 @@
     </div>
   </div>
 
-  <div id="modalPlano" class="modal-overlay">
-    <div class="modal-content">
-      <span id="closeModalPlanoBtn" class="modal-close">&times;</span>
-      <h2>Novo Plano de Aula</h2>
-      <form id="formPlano">
-        
-        <div class="form-group">
-          <label for="plano-name">Nome do Plano (Ex: Geografia 6º Ano)</label>
-          <input type="text" id="plano-name" name="name" required>
-        </div>
-
-        <div class="form-group">
-          <label for="plano-gradeLevel">Nível Escolar</label>
-          <select id="plano-gradeLevel" name="gradeLevel" required>
-            <option value="">Selecione...</option>
-            <option value="Fundamental 1">Fundamental 1</option>
-            <option value="Fundamental 2">Fundamental 2</option>
-            <option value="Ensino Médio">Ensino Médio</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="plano-schoolYear">Ano/Série</label>
-          <select id="plano-schoolYear" name="schoolYear" required disabled>
-            <option value="">Selecione o nível primeiro</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="plano-file">Arquivo PDF</label>
-          <input type="file" id="plano-file" name="pdfFile" accept="application/pdf" required>
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Salvar e Enviar PDF</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div id="modalViewPDF" class="modal-overlay" style="z-index: 2000;">
-    <div class="modal-content">
-      <div class="pdf-header">
-        <h2 id="pdfTitle">Visualizando Arquivo</h2>
-        <span id="closePdfBtn" class="modal-close" style="position: static;">&times;</span>
-      </div>
-      <iframe id="pdfViewerFrame" src=""></iframe>
-    </div>
-  </div>
-
   <div id="modalStatus" class="modal-overlay" style="z-index: 1001;">
     <div class="modal-content">
       <span id="closeStatusModalBtn" class="modal-close">&times;</span>
@@ -233,7 +142,6 @@
       </div>
     </div>
   </div>
-
   <div id="modalConfirmacao" class="modal-overlay" style="z-index: 1002;">
     <div class="modal-content">
       <span id="closeConfirmacaoModalBtn" class="modal-close">&times;</span>
@@ -246,7 +154,6 @@
     </div>
   </div>
   
-  <script src="../scripts/turmas-e-conteudos.js" type="module"></script>
-
+  <script src="../scripts/turmas.js" type="module"></script>
 </body>
 </html>

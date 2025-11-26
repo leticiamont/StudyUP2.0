@@ -29,7 +29,7 @@ router.get('/', optionalAuth, getPlans);
 
 // --- MUDANÇA AQUI: Adiciona upload.single('pdfFile') ---
 router.post('/', optionalAuth, upload.single('pdfFile'), createPlan);
-
+router.put('/:id', optionalAuth, upload.single('pdfFile'), updatePlan);
 router.get('/:id', optionalAuth, getPlanById);
 router.put('/:id', optionalAuth, updatePlan);
 router.delete('/:id', optionalAuth, deletePlan);

@@ -1,0 +1,135 @@
+/* Layout Geral */
+.forum-content-aluno { flex: 1; padding: 40px 50px; overflow-y: auto; background-color: #F8FAFC; }
+.forum-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.forum-header h1 { font-size: 28px; color: #111827; }
+.btn-new-post-aluno { background-color: #0554F2; color: white; border: none; padding: 12px 25px; border-radius: 30px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+/* Lista de Posts */
+.forum-feed-aluno { display: flex; flex-direction: column; gap: 15px; }
+.post-card-aluno { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #F0F0F0; transition: 0.2s; }
+.post-card-aluno:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.08); }
+.post-header-aluno { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.avatar-icon { font-size: 40px; color: #9CA3AF; }
+.author-info-aluno strong { display: block; font-size: 16px; color: #333; }
+.author-info-aluno span { font-size: 12px; color: #999; }
+.post-text { font-size: 16px; color: #374151; line-height: 1.6; margin-bottom: 20px; }
+
+/* Footer de Ações */
+.post-footer-aluno { display: flex; gap: 20px; border-top: 1px solid #F0F0F0; padding-top: 15px; }
+.action-btn-aluno { background: none; border: none; color: #6B7280; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 20px; transition: 0.2s; }
+.action-btn-aluno:hover { background-color: #F3F4F6; color: #0554F2; }
+.action-btn-aluno.liked { color: #0554F2; background-color: #E3F2FD; }
+
+/* Modal de Criação */
+.post-textarea { width: 100%; min-height: 150px; padding: 15px; border-radius: 10px; border: 1px solid #ccc; font-family: inherit; resize: vertical; margin-top: 10px; }
+
+/* --- ESTILOS DO MODAL DE COMENTÁRIOS (NOVO) --- */
+.modal-box.large {
+    width: 600px;
+    max-width: 90vw;
+    height: 80vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+}
+
+/* Base do Post Original */
+.original-post-area {
+    padding: 10px 0 20px 0; border-bottom: 1px solid #eee; margin-bottom: 20px;
+}
+.original-post-area strong { display: block; font-size: 14px; color: #333; margin-bottom: 4px; }
+.original-post-area p { font-size: 16px; line-height: 1.6; color: #1F2937; }
+.original-post-area .date-post { font-size: 12px; color: #999; }
+
+/* Lista de Comentários */
+.comment-list-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+.comments-feed-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 15px; padding-right: 10px; }
+
+.comment-item-box {
+    background: #FAFAFA; border-radius: 12px; padding: 15px;
+    display: flex; align-items: flex-start; gap: 15px;
+    border-left: 5px solid #B2FF59; /* Destaque da Resposta */
+}
+
+.comment-item-box span.material-symbols-rounded { color: #8BC34A; font-size: 20px; flex-shrink: 0; }
+.comment-body-info strong { display: block; font-size: 14px; color: #0554F2; margin-bottom: 4px; }
+.comment-body-info p { margin: 0; font-size: 15px; color: #374151; }
+
+/* Caixa de Resposta (Footer Fixo do Modal) */
+.reply-box-footer-modal {
+    padding: 15px 25px; border-top: 1px solid #E5E7EB; background: #fff;
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+.reply-textarea {
+    flex: 1; padding: 10px 15px; border-radius: 25px; border: 1px solid #ccc;
+    resize: none; font-family: inherit; font-size: 15px;
+}
+.btn-send-comment-modal {
+    width: 45px; height: 45px; border-radius: 50%; background-color: #0554F2; color: white;
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+.modal-body {
+    /* Precisa ser flexível para o input fixo */
+    display: flex;
+    flex-direction: column;
+    padding: 25px; 
+    overflow: hidden;
+}
+
+.post-detail-scroll {
+    flex: 1;
+    overflow-y: auto; /* Rola apenas o conteúdo */
+    padding-right: 15px; /* Espaço para a barra */
+}
+
+/* Post Original */
+.original-post-area {
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+.original-post-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.avatar-icon-small { font-size: 28px; color: #9CA3AF; }
+.author-info-post { display: flex; flex-direction: column; }
+.author-info-post strong { font-size: 15px; color: #333; }
+.author-info-post .date-post { font-size: 12px; color: #999; }
+.post-text-body { margin-top: 15px; font-size: 17px; line-height: 1.6; color: #1F2937; }
+.divider-line { border: 0; border-top: 1px solid #f0f0f0; margin: 15px 0; }
+
+
+/* Lista de Comentários */
+.comment-list-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+
+.comments-feed-list { display: flex; flex-direction: column; gap: 10px; }
+
+.comment-item-box {
+    background: #FAFAFA; border-radius: 12px; padding: 15px;
+    display: flex; align-items: flex-start; gap: 15px;
+    border-left: 5px solid #D1D5DB; /* Borda padrão */
+}
+
+.comment-item-box.teacher-reply {
+    background: #E3F2FD; /* Azul claro para destaque */
+    border-color: #0554F2;
+}
+
+.teacher-name { color: #0554F2 !important; font-weight: bold; }
+
+.reply-icon { color: #8BC34A; font-size: 20px; flex-shrink: 0; }
+.comment-body-info { flex: 1; }
+.comment-body-info p { margin: 0; font-size: 15px; }
+.comment-body-info strong { display: block; margin-bottom: 4px; }
+
+/* Input de Resposta */
+.reply-box-footer-modal {
+    padding: 15px 25px; border-top: 1px solid #E5E7EB; background: #fff;
+    display: flex; align-items: flex-end; gap: 10px; flex-shrink: 0;
+}
+.reply-textarea {
+    flex: 1; padding: 12px 20px; border-radius: 25px; border: 1px solid #ccc;
+    resize: none; font-family: inherit; font-size: 15px;
+}
+.btn-send-comment-modal {
+    width: 45px; height: 45px; border-radius: 50%; background-color: #0554F2; color: white;
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
