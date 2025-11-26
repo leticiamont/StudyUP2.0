@@ -1,51 +1,57 @@
 import { db } from '../config/firebase.js';
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
+import dotenv from 'dotenv';
 
+dotenv.config();
+
+// Configuração segura (Lendo do .env)
 cloudinary.config({
-  cloud_name: 'dgy9gqmrr',
-  api_key: '157666573927114',
-  api_secret: 'tntjcDby_OK6isAfwrHFr9vH8hU'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 const CONTENT_COLLECTION = 'contents'; 
 
 export const uploadContent = async (req, res) => {
   try {
-    let publicUrl = null;
-    let publicId = null; // <--- NOVO: Vamos guardar o ID do Cloudinary
-    let type = req.body.type || 'text'; 
-
-    if (req.file) {
-      console.log('Iniciando upload para o Cloudinary...');
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        resource_type: 'auto',
-        folder: 'studyup_uploads',
-        use_filename: true,
-        unique_filename: false,
-      });
-      publicUrl = uploadResult.secure_url;
-      publicId = uploadResult.public_id; // <--- Pegamos o ID aqui
-      type = req.file.mimetype;
-      
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum ficheiro enviado.' });
     }
+    
+    const file = req.file;
+    console.log('Iniciando upload para o Cloudinary...');
 
+    // Envia o arquivo local para o Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(file.path, {
+      resource_type: 'auto',
+      folder: 'studyup_uploads',
+      use_filename: true,
+      unique_filename: false,
+    });
+
+    const publicUrl = uploadResult.secure_url;
+
+    // Salva os dados no Firestore
     const contentData = {
-      name: req.body.name || "Sem título",
-      type: type,
-      url: publicUrl || req.body.url || null, 
-      public_id: publicId || null, // <--- Salvamos no Banco
-      content: req.body.content || null, 
-      gradeLevel: req.body.gradeLevel || null, 
-      teacherId: req.user.uid, 
-      classId: null, 
+      name: file.originalname,
+      type: file.mimetype,
+      url: publicUrl,
+      planId: req.body.planId || null,
+      classId: req.body.classId || null, 
+      authorId: req.user?.uid || 'anonym', 
       createdAt: new Date().toISOString(),
     };
     
     const docRef = await db.collection(CONTENT_COLLECTION).add(contentData);
 
-    console.log('Conteúdo salvo:', contentData.name);
+    // Limpeza do arquivo local (pasta uploads do PC)
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+
+    console.log('Sucesso! Arquivo disponível em:', publicUrl);
     res.status(201).json({ id: docRef.id, ...contentData });
 
   } catch (error) {
@@ -56,21 +62,18 @@ export const uploadContent = async (req, res) => {
 
 export const getContents = async (req, res) => {
   try {
-    const { gradeLevel, classId } = req.query;
-    const { uid, role } = req.user;
+    const { classId } = req.query;
+    const userId = req.user.uid; // O ID do professor logado
 
     let query = db.collection(CONTENT_COLLECTION);
 
-    if (role === 'student') {
-        if (gradeLevel) {
-            query = query.where('gradeLevel', '==', gradeLevel);
-        } else {
-             if (classId) query = query.where('classId', '==', classId);
-             else return res.status(200).json([]);
-        }
+    if (classId) {
+      // Se pedir de uma turma, mostra tudo da turma (filtro por turma)
+      query = query.where('classId', '==', classId);
     } else {
-        query = query.where('teacherId', '==', uid);
-        if (gradeLevel) query = query.where('gradeLevel', '==', gradeLevel);
+      // Se NÃO pedir turma (ou seja, "Meus Conteúdos" ou "Banco"),
+      // mostra APENAS o que ESSE professor criou.
+      query = query.where('authorId', '==', userId);
     }
 
     const snapshot = await query.get();
@@ -84,35 +87,15 @@ export const getContents = async (req, res) => {
   }
 };
 
-// --- DELETE ATUALIZADO (A MÁGICA ACONTECE AQUI) ---
+// 3. FUNÇÃO DE DELETAR
 export const deleteContent = async (req, res) => {
   try {
     const { id } = req.params;
-    const docRef = db.collection(CONTENT_COLLECTION).doc(id);
     
-    // 1. Busca o documento antes de apagar para pegar o public_id
-    const docSnap = await docRef.get();
+    // Deleta o registro do banco de dados
+    await db.collection(CONTENT_COLLECTION).doc(id).delete();
     
-    if (!docSnap.exists) {
-        return res.status(404).json({ error: "Conteúdo não encontrado." });
-    }
-
-    const data = docSnap.data();
-
-    // 2. Se tiver um arquivo no Cloudinary (tem public_id), apaga lá primeiro
-    if (data.public_id) {
-        console.log(`Apagando do Cloudinary: ${data.public_id}`);
-        // resource_type: 'raw' é importante para PDFs, 'image' para imagens
-        // Para garantir, tentamos detectar ou usar 'auto' se a lib permitir, 
-        // mas geralmente destroy precisa do tipo certo.
-        // Vamos tentar apagar genérico:
-        await cloudinary.uploader.destroy(data.public_id, { resource_type: 'raw' }); 
-        // Nota: Se for imagem, pode precisar de uma segunda tentativa com 'image' se o 'raw' falhar,
-        // mas para PDFs 'raw' costuma ser o padrão do Cloudinary.
-    }
-
-    // 3. Apaga do Firebase (Firestore)
-    await docRef.delete();
+    // (Futuramente adicionar aqui o código para deletar do Cloudinary também)
     
     console.log(`Conteúdo ${id} apagado com sucesso.`);
     res.status(200).json({ message: "Conteúdo apagado." });

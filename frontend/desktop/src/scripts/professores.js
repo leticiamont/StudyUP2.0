@@ -1,91 +1,113 @@
-import api from '../services/api.js'; // (Agora importa o api.js com o .put)
+import api from '../services/api.js';
 import { initLayout } from './componentLoader.js';
 
 console.log('[professores.js] Carregando... Chamando initLayout().');
 initLayout();
 
-// Variável de Estado
-let currentEditingId = null; 
+let currentEditingId = null;
+let actionToConfirm = null; // Guarda a ação para executar depois do "Sim"
 
 document.addEventListener('componentsLoaded', () => {
-  console.log('[professores.js] "componentsLoaded" recebido.');
-
-  // --- 1. Seleção (Modal e Tabela) ---
-  const tabelaProfessoresBody = document.getElementById('tabelaProfessoresBody');
-  const openModalProfessorBtn = document.getElementById('openModalProfessorBtn');
+  // --- Seletores ---
+  const tabelaBody = document.getElementById('tabelaProfessoresBody');
+  const openModalBtn = document.getElementById('openModalProfessorBtn');
   const modalProfessor = document.getElementById('modalProfessor');
-  const closeModalProfessorBtn = document.getElementById('closeModalProfessorBtn');
+  const closeModalBtn = document.getElementById('closeModalProfessorBtn');
   const formProfessor = document.getElementById('formProfessor');
+  const modalTitle = document.getElementById('modalTitle');
   
-  const modalTitle = modalProfessor.querySelector('h2');
-  const modalSubmitBtn = modalProfessor.querySelector('button[type="submit"]');
   const profNameInput = document.getElementById('prof-name');
   const profEmailInput = document.getElementById('prof-email');
-  const profPasswordInput = document.getElementById('prof-password');
-  const profPasswordGroup = document.getElementById('prof-password-group'); // (Grupo da senha)
-  
-  // --- 2. Seleção (Filtros) ---
   const profSearch = document.getElementById('prof-search');
   const profFilterSort = document.getElementById('prof-filter-sort');
 
-  // --- 3. Seleção (MODAL DE STATUS) ---
-  const modalStatus = document.getElementById('modalStatus'); // (Agora existe no HTML)
-  const statusModalTitle = document.getElementById('statusModalTitle');
-  const statusModalMessage = document.getElementById('statusModalMessage');
-  const closeStatusModalBtn = document.getElementById('closeStatusModalBtn');
-  const okStatusModalBtn = document.getElementById('okStatusModalBtn');
+  // Modal Status
+  const modalStatus = document.getElementById('modalStatus');
+  const statusTitle = document.getElementById('statusModalTitle');
+  const statusMsg = document.getElementById('statusModalMessage');
+  const closeStatusBtn = document.getElementById('closeStatusModalBtn');
+  const okStatusBtn = document.getElementById('okStatusModalBtn');
 
-  // Verificação de segurança
-  if (!tabelaProfessoresBody || !modalProfessor || !modalStatus) {
-    console.error('[professores.js] ERRO CRÍTICO: Elementos essenciais do DOM (modais, tabela) não encontrados.');
-    return;
-  }
+  // Modal Confirmação (NOVO)
+  const modalConfirmacao = document.getElementById('modalConfirmacao');
+  const confirmacaoMessage = document.getElementById('confirmacaoMessage');
+  const closeConfirmacaoModalBtn = document.getElementById('closeConfirmacaoModalBtn');
+  const cancelarConfirmacaoBtn = document.getElementById('cancelarConfirmacaoBtn');
+  const confirmarAcaoBtn = document.getElementById('confirmarAcaoBtn');
 
-  // --- 4. Funções (Modal Status) ---
-  const showStatusModal = (title, message) => {
-    statusModalTitle.textContent = title;
-    statusModalMessage.textContent = message;
+  if (!tabelaBody || !modalProfessor || !modalConfirmacao) return;
+
+  // --- Helpers ---
+  const showStatus = (title, msg) => {
+    statusTitle.textContent = title;
+    statusMsg.textContent = msg;
     modalStatus.style.display = 'flex';
   };
-  const closeStatusModal = () => modalStatus.style.display = 'none';
+  const closeStatus = () => modalStatus.style.display = 'none';
 
-  // --- 5. Funções Principais (Listagem) ---
+  const showConfirm = (msg, callback) => {
+    confirmacaoMessage.textContent = msg;
+    actionToConfirm = callback; // Guarda o que fazer
+    modalConfirmacao.style.display = 'flex';
+  };
+  const closeConfirm = () => {
+    modalConfirmacao.style.display = 'none';
+    actionToConfirm = null;
+  };
+
+  // --- Listagem ---
   const loadProfessores = async () => {
-    tabelaProfessoresBody.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
+    tabelaBody.innerHTML = '<tr><td colspan="5">Carregando...</td></tr>';
     const params = new URLSearchParams({ role: 'teacher' });
     if (profSearch.value) params.append('search', profSearch.value);
     if (profFilterSort.value) params.append('sort', profFilterSort.value);
+
     try {
-      const professores = await api.get(`/api/users?${params.toString()}`);
-      tabelaProfessoresBody.innerHTML = ''; 
-      if (!professores || professores.length === 0) {
-        tabelaProfessoresBody.innerHTML = '<tr><td colspan="4">Nenhum professor cadastrado.</td></tr>';
+      const data = await api.get(`/api/users?${params.toString()}`);
+      tabelaBody.innerHTML = '';
+      
+      if (!data || data.length === 0) {
+        tabelaBody.innerHTML = '<tr><td colspan="5">Nenhum professor.</td></tr>';
         return;
       }
-      professores.forEach(prof => {
+
+      data.forEach(prof => {
         const tr = document.createElement('tr');
-        const turmas = prof.classCount || 0; 
+        
+        const isActive = prof.isActive !== false; 
+        const statusLabel = isActive ? 
+          '<span style="color: green; font-weight: bold;">Ativo</span>' : 
+          '<span style="color: red; font-weight: bold;">Inativo</span>';
+        
+        const toggleBtnText = isActive ? 'Desativar' : 'Ativar';
+        const toggleBtnClass = isActive ? 'btn-danger' : 'btn-primary';
+        
         tr.innerHTML = `
-          <td>${prof.displayName || 'N/A'}</td>
-          <td>${prof.email || 'N/A'}</td>
-          <td>${turmas}</td>
+          <td>${prof.displayName}</td>
+          <td>${prof.email}</td>          
+          <td>${prof.classCount || 0}</td>
+          <td>${statusLabel}</td>
           <td>
             <button class="btn btn-secondary btn-sm edit-btn" data-id="${prof.id}">Editar</button>
+            <button class="btn ${toggleBtnClass} btn-sm toggle-btn" 
+                    data-id="${prof.id}" 
+                    data-status="${isActive}"
+                    style="margin-left: 5px;">
+              ${toggleBtnText}
+            </button>
           </td>
         `;
-        tabelaProfessoresBody.appendChild(tr);
+        tabelaBody.appendChild(tr);
       });
     } catch (error) {
-      showStatusModal('Erro ao Carregar', error.message);
-      tabelaProfessoresBody.innerHTML = `<tr><td colspan="4" style="color: red;">${error.message}</td></tr>`;
+      tabelaBody.innerHTML = `<tr><td colspan="5" style="color: red;">${error.message}</td></tr>`;
     }
   };
 
-  // --- 6. Funções Principais (Formulário: Criar e Editar) ---
+  // --- Cadastro / Edição ---
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    
-    const dadosForm = {
+    const dados = {
       displayName: profNameInput.value,
       email: profEmailInput.value,
       role: 'teacher'
@@ -93,88 +115,102 @@ document.addEventListener('componentsLoaded', () => {
 
     try {
       if (currentEditingId) {
-        // --- MODO EDIÇÃO ---
-        console.log(`[professores.js] Editando professor ID: ${currentEditingId}`);
-        // AGORA O api.put EXISTE!
-        await api.put(`/api/users/${currentEditingId}`, dadosForm);
-        showStatusModal('Sucesso!', 'Professor(a) atualizado com sucesso!');
-        
+        await api.put(`/api/users/${currentEditingId}`, dados);
+        showStatus('Sucesso', 'Dados atualizados.');
       } else {
-        // --- MODO CRIAÇÃO ---
-        dadosForm.password = profPasswordInput.value;
-        if (!dadosForm.password) {
-          showStatusModal('Erro', 'Senha provisória é obrigatória para criar.');
-          return;
-        }
-        console.log('[professores.js] Criando novo professor...');
-        await api.post('/api/users', dadosForm);
-        showStatusModal('Sucesso!', 'Professor(a) criado com sucesso!');
+        await api.post('/api/users', dados);
+        showStatus('Sucesso', 'Professor criado!\nSenha padrão: professor123');
       }
-      
       closeModal();
       loadProfessores();
-
     } catch (error) {
-      console.error('[handleFormSubmit] Erro:', error);
-      // Agora o showStatusModal vai funcionar e mostrar o erro
-      showStatusModal('Erro ao Salvar', error.message);
+      showStatus('Erro', error.message);
     }
   };
 
-  // --- 7. Funções do Modal (Abrir/Fechar) ---
-  const openModalParaCriar = () => {
-    currentEditingId = null; 
-    modalTitle.textContent = 'Novo Professor';
-    modalSubmitBtn.textContent = 'Salvar';
-    profPasswordGroup.style.display = 'block'; // Mostra o campo de senha
-    profPasswordInput.required = true; // Torna obrigatório
+  // --- Ação de Desativar/Ativar (CORRIGIDA) ---
+  const handleToggleStatus = (id, currentStatus) => {
+    const newStatus = !currentStatus; 
+    const actionName = newStatus ? "Ativar" : "Desativar";
+    
+    // SUBSTITUI O confirm() NATIVO PELO MODAL
+    showConfirm(`Tem certeza que deseja ${actionName.toUpperCase()} este professor?`, async () => {
+      try {
+        // Usa fetch manual para garantir o PATCH
+        await fetch(`http://localhost:3000/api/users/${id}/status`, {
+           method: 'PATCH',
+           headers: { 
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+           },
+           body: JSON.stringify({ isActive: newStatus })
+        });
+        
+        showStatus('Sucesso', `Professor ${actionName.toLowerCase()} com sucesso.`);
+        loadProfessores();
+      } catch (error) {
+        showStatus('Erro', 'Falha ao alterar status.');
+        console.error(error);
+      }
+    });
+  };
+
+  // --- Modais ---
+  const openModalCriar = () => {
+    currentEditingId = null;
+    if(modalTitle) modalTitle.textContent = 'Novo Professor';
     formProfessor.reset();
+    profEmailInput.disabled = false; 
     modalProfessor.style.display = 'flex';
   };
 
-  const openModalParaEditar = async (id) => {
+  const openModalEditar = async (id) => {
     currentEditingId = id;
-    modalTitle.textContent = 'Editar Professor';
-    modalSubmitBtn.textContent = 'Atualizar';
-    profPasswordGroup.style.display = 'none'; // Esconde o campo de senha
-    profPasswordInput.required = false; // NÃO é obrigatório (corrige o aviso amarelo)
+    if(modalTitle) modalTitle.textContent = 'Editar Professor';
     formProfessor.reset();
-    
     try {
-      const professor = await api.get(`/api/users/${id}`);
-      profNameInput.value = professor.displayName || '';
-      profEmailInput.value = professor.email || '';
+      const prof = await api.get(`/api/users/${id}`);
+      profNameInput.value = prof.displayName;
+      profEmailInput.value = prof.email;
+      profEmailInput.disabled = true; 
       modalProfessor.style.display = 'flex';
-    } catch (error) {
-      showStatusModal('Erro', 'Erro ao buscar dados do professor: ' + error.message);
-    }
+    } catch (error) { showStatus('Erro', error.message); }
   };
 
   const closeModal = () => {
     modalProfessor.style.display = 'none';
     formProfessor.reset();
-    currentEditingId = null;
   };
 
-  // --- 8. Listeners ---
-  openModalProfessorBtn.addEventListener('click', openModalParaCriar);
-  closeModalProfessorBtn.addEventListener('click', closeModal);
+  // --- Listeners ---
+  openModalBtn.addEventListener('click', openModalCriar);
+  closeModalBtn.addEventListener('click', closeModal);
   formProfessor.addEventListener('submit', handleFormSubmit);
   
   profSearch.addEventListener('input', loadProfessores);
   profFilterSort.addEventListener('change', loadProfessores);
 
-  tabelaProfessoresBody.addEventListener('click', (e) => {
-    if (e.target.classList.contains('edit-btn')) {
-      const id = e.target.getAttribute('data-id');
-      openModalParaEditar(id);
+  tabelaBody.addEventListener('click', (e) => {
+    const btn = e.target;
+    if (btn.classList.contains('edit-btn')) {
+      openModalEditar(btn.dataset.id);
+    }
+    if (btn.classList.contains('toggle-btn')) {
+      const currentStatus = btn.dataset.status === 'true';
+      handleToggleStatus(btn.dataset.id, currentStatus);
     }
   });
 
-  // Listeners do Modal de Status
-  closeStatusModalBtn.addEventListener('click', closeStatusModal);
-  okStatusModalBtn.addEventListener('click', closeStatusModal);
+  closeStatusBtn.addEventListener('click', closeStatus);
+  okStatusBtn.addEventListener('click', closeStatus);
+  
+  // Listeners Confirmação
+  closeConfirmacaoModalBtn.addEventListener('click', closeConfirm);
+  cancelarConfirmacaoBtn.addEventListener('click', closeConfirm);
+  confirmarAcaoBtn.addEventListener('click', () => {
+    if (actionToConfirm) actionToConfirm();
+    closeConfirm();
+  });
 
-  // --- 9. Inicialização ---
   loadProfessores();
 });

@@ -1,132 +1,109 @@
-/* Estilo geral */
-body {
+/* Reset e Fontes */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   font-family: 'Poppins', sans-serif;
-  background-color: #0A47FF;
+}
+
+body {
+  background-color: #0554F2; /* Azul Principal */
+  height: 100vh;
+  width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
-  margin: 0;
-  position: relative;
   overflow: hidden;
+  position: relative;
 }
 
-/* Ícones no fundo */
-body::before,
-body::after {
+/* Capelos de fundo (decorativo) */
+body::before, body::after {
   content: "";
   position: absolute;
-  background: url('https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsrounded/school/default/48px.svg')
-    no-repeat center/contain;
-  opacity: 0.08;
+  /* Um SVG simples de capelo em base64 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.05;
   z-index: 0;
+  pointer-events: none;
 }
+body::before { top: -10%; right: -5%; width: 500px; height: 500px; transform: rotate(15deg); }
+body::after { bottom: -10%; left: -5%; width: 450px; height: 450px; transform: rotate(-15deg); }
 
-body::before {
-  top: 10%;
-  left: 5%;
-  width: 250px;
-  height: 250px;
-}
-
-body::after {
-  bottom: 10%;
-  right: 5%;
-  width: 300px;
-  height: 300px;
-}
-
+/* Card Branco */
 .login-container {
-  position: relative;
   z-index: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .login-box {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 8px 15px rgba(0,0,0,0.15);
-  padding: 40px 50px;
-  width: 380px;
-  text-align: center;
+  background-color: #FFFFFF;
+  width: 420px;
+  padding: 60px 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .logo {
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 42px;
+  font-weight: 800;
   margin-bottom: 40px;
+  letter-spacing: -1px;
 }
+.logo .blue { color: #0554F2; }
+.logo .green { color: #BAF241; }
 
-.logo .blue {
-  color: #0A47FF;
-}
-
-.logo .green {
-  color: #C8F61F;
-}
-
-.input-group {
-  position: relative;
-  margin-bottom: 20px;
-}
+.login-form { width: 100%; display: flex; flex-direction: column; gap: 20px; }
+.input-group { position: relative; width: 100%; }
 
 .input-group input {
   width: 100%;
-  padding: 12px 40px 12px 15px;
-  border: 2px solid #0A47FF;
-  border-radius: 30px;
+  height: 50px;
+  padding: 0 20px;
+  border: 1.5px solid #0554F2;
+  border-radius: 25px;
+  font-size: 15px;
   outline: none;
-  font-size: 14px;
   color: #333;
-  transition: 0.2s;
+  transition: all 0.3s ease;
 }
-
-.input-group input:focus {
-  border-color: #C8F61F;
-}
+.input-group input:focus { background-color: #f0f6ff; box-shadow: 0 0 0 3px rgba(5, 84, 242, 0.1); }
 
 .password-group span {
   position: absolute;
-  right: 12px;
+  right: 15px;
   top: 50%;
   transform: translateY(-50%);
+  color: #0554F2;
   cursor: pointer;
-  color: #0A47FF;
-  font-size: 22px;
-  user-select: none;
+  font-size: 20px;
 }
 
-.options {
-  text-align: left;
-  font-size: 14px;
-  margin-bottom: 20px;
-}
-
-.options label {
-  cursor: pointer;
-}
+.options { display: flex; align-items: center; font-size: 14px; color: #555; padding-left: 5px; }
+.options input { margin-right: 8px; cursor: pointer; }
 
 .btn-entrar {
-  background: #C8F61F;
+  width: 100%;
+  height: 50px;
+  background-color: #BAF241;
   color: #000;
   border: none;
-  border-radius: 30px;
-  padding: 12px 0;
-  width: 100%;
-  font-size: 16px;
-  font-weight: 600;
+  border-radius: 25px;
+  font-size: 18px;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 5px rgba(0,0,0,0.2);
-  transition: 0.2s;
-}
-
-.btn-entrar:hover {
-  background: #b3e11c;
-  transform: translateY(-1px);
-}
-
-.error-message {
-  color: red;
-  font-size: 13px;
+  transition: transform 0.2s;
+  box-shadow: 0 4px 10px rgba(186, 242, 65, 0.3);
   margin-top: 10px;
-  min-height: 20px;
 }
+.btn-entrar:hover { background-color: #a8e02b; transform: translateY(-2px); }
+.error-message { margin-top: 15px; font-size: 13px; color: #d32f2f; text-align: center; min-height: 20px; font-weight: 500; }

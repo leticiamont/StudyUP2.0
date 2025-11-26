@@ -1,66 +1,78 @@
-/**
- * @description Carrega um componente HTML em um seletor.
- */
 export async function loadComponent(selector, path) {
   const el = document.querySelector(selector);
   if (!el) return;
   try {
     const res = await fetch(path);
-    const html = await res.text();
-    el.innerHTML = html;
-  } catch (err) {
-    console.error("Error loading component", path, err);
+    el.innerHTML = await res.text();
+  } catch (err) { console.error(err); }
+}
+
+function setupNavigation() {
+  const routes = {
+    "inicio": "../pages/inicio.html",
+    "professores": "../pages/professores.html",
+    "alunos": "../pages/alunos.html",
+    "turmasConteudos": "../pages/turmas-e-conteudos.html"
+  };
+  Object.keys(routes).forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener("click", () => {
+        const path = routes[id];
+        if (!window.location.href.includes(path.split('/').pop())) window.location.href = path;
+    });
+  });
+}
+
+function setupTopbar() {
+  const profileBtn = document.getElementById('userProfileBtn');
+  const dropdown = document.getElementById('userDropdown');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  if (profileBtn && dropdown) {
+    profileBtn.addEventListener('click', (e) => { e.stopPropagation(); dropdown.classList.toggle('show'); });
+    document.addEventListener('click', () => dropdown.classList.remove('show'));
+  }
+  
+  if (logoutBtn) {
+      // Injeta modal de logout se não existir
+      if (!document.getElementById('modalLogout')) {
+          document.body.insertAdjacentHTML('beforeend', `
+            <div id="modalLogout" class="modal-overlay" style="z-index:2000; display:none;">
+              <div class="modal-content">
+                <h2>Sair</h2><p>Deseja sair?</p>
+                <div class="form-actions">
+                  <button id="cancelLogout" class="btn btn-secondary">Cancelar</button>
+                  <button id="confirmLogout" class="btn btn-primary" style="background:#d32f2f;">Sair</button>
+                </div>
+              </div>
+            </div>`);
+      }
+      const modal = document.getElementById('modalLogout');
+      logoutBtn.addEventListener('click', () => modal.style.display = 'flex');
+      document.getElementById('cancelLogout').addEventListener('click', () => modal.style.display = 'none');
+      document.getElementById('confirmLogout').addEventListener('click', () => {
+          localStorage.removeItem('authToken');
+          window.location.href = '../pages/login.html';
+      });
   }
 }
 
-/**
- * @description Adiciona os listeners de clique para os botões do menu.
- * (Esta é a nova função de navegação)
- */
-function setupNavigation() {
-  // Mapeia o ID do botão para o arquivo HTML da página
-  const routes = {
-    "inicio": "../pages/inicio.html", // (Precisamos criar esta página)
-    "professores": "../pages/professores.html",
-    "alunos": "../pages/alunos.html",
-    "turmasConteudos": "../pages/turmas-e-conteudos.html",
-    // "suporte": "../pages/suporte.html",
-    // "configuracao": "../pages/configuracao.html"
-  };
-
-  // Adiciona o listener para cada botão
-  Object.keys(routes).forEach(buttonId => {
-    const button = document.getElementById(buttonId);
-    if (button) {
-      button.addEventListener("click", () => {
-        // Pega o caminho da página
-        const path = routes[buttonId];
-        
-        // Navega para a nova página
-        // (Verifica se já não está na página)
-        if (window.location.pathname.endsWith(path)) {
-          return; // Já estamos nesta página
-        }
-        window.location.href = path;
-      });
-    }
-  });
-
-  // (Botões "Suporte" e "Configuração" não estão no 'routes', então eles não farão nada por enquanto)
-}
-
-/**
- * @description Ponto de entrada: Carrega layout e ativa a navegação.
- */
 export async function initLayout() {
-  // 1. Carrega o HTML do menu e topbar
-  await loadComponent("#menu-container", "../components/menu.html");
-  await loadComponent("#topbar-container", "../components/topbar.html");
+  const token = localStorage.getItem("authToken");
+  
+  // Se não tem token e não está no login -> CHUTA PARA O LOGIN
+  if (!token && !window.location.href.includes("login.html")) {
+    window.location.href = "../pages/login.html";
+    return;
+  }
 
-  // 2. ATIVA A NAVEGAÇÃO
-  // (Adiciona os listeners de clique aos botões do menu que acabamos de carregar)
-  setupNavigation();
+  // Se tem token, carrega o layout
+  if (token) {
+      await loadComponent("#menu-container", "../components/menu.html");
+      await loadComponent("#topbar-container", "../components/topbar.html");
+      setupNavigation();
+      setupTopbar();
+  }
 
-  // 3. Avisa aos scripts da página (turmas.js, alunos.js) que o layout está pronto
   document.dispatchEvent(new Event("componentsLoaded"));
 }

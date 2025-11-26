@@ -1,4 +1,4 @@
-/* --- Grade de KPIs (Como antes) --- */
+/* --- Grade de KPIs --- */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr); 
@@ -6,127 +6,122 @@
   margin-bottom: 32px;
 }
 .kpi-card {
-  /* ... (Estilos do kpi-card como antes) ... */
   display: flex;
   align-items: center;
   background-color: #fff;
   padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border-radius: 12px; /* Mais arredondado */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); /* Sombra mais suave */
 }
 .kpi-card .icon-kpi { font-size: 48px; margin-right: 16px; padding: 12px; border-radius: 50%; }
 .kpi-card:nth-child(1) .icon-kpi { background-color: #e6f7ff; color: #007BFF; }
 .kpi-card:nth-child(2) .icon-kpi { background-color: #fffbe6; color: #faad14; }
 .kpi-card:nth-child(3) .icon-kpi { background-color: #f6ffed; color: #A0D911; }
 .kpi-info { display: flex; flex-direction: column; }
-.kpi-value { font-size: 32px; font-weight: bold; }
-.kpi-label { font-size: 14px; color: #555; }
+.kpi-value { font-size: 32px; font-weight: 700; color: #333; }
+.kpi-label { font-size: 14px; color: #666; }
 
-/* --- NOVO: Grid do Dashboard (2 Colunas) --- */
+
+/* --- Grid Principal (2 Colunas) --- */
 .dashboard-grid {
   display: grid;
-  /* 2 colunas, a da esquerda (ranking) é 2/3, a da direita (notícias) é 1/3 */
-  grid-template-columns: 2fr 1fr; 
+  grid-template-columns: 2fr 1fr; /* Ranking ocupa 2/3, Notícias 1/3 */
   gap: 24px;
+  align-items: start; /* Alinha pelo topo */
 }
 
-/* --- Tabela do Leaderboard (Ajuste) --- */
-.leaderboard h2 {
-  font-size: 20px;
-  margin-bottom: 16px;
-}
-/* (A tabela usa o .table-container do main.css) */
-
-
-/* --- NOVO: Módulo de Notícias --- */
-.news-module {
+/* Estilo Comum dos Cards (Ranking e Notícias) */
+.leaderboard, .news-module {
   background-color: #fff;
   padding: 24px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  height: 100%; /* Tenta preencher a altura */
+  min-height: 400px; /* Altura mínima para alinhar visualmente */
+  display: flex;
+  flex-direction: column;
 }
-.news-module h2 {
+
+/* Títulos */
+.leaderboard h2, .news-module h2 {
   font-size: 20px;
   margin-top: 0;
-  margin-bottom: 16px;
-}
-.news-module h3 {
-  font-size: 16px;
-  border-top: 1px solid #eee;
-  padding-top: 16px;
-  margin-top: 24px;
+  margin-bottom: 20px;
+  color: #333;
+  font-weight: 600;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-/* Formulário de Nova Notícia */
-.news-creator .form-group {
-  margin-bottom: 12px; /* Menos espaço no form */
+/* Header do Mural (Título + Botão) */
+.news-module .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 20px;
 }
-.news-creator .form-actions {
-  margin-top: 16px;
-  text-align: left;
-}
-.news-creator textarea {
-  width: calc(100% - 20px); /* (Ajuste para o padding do main.css) */
-  padding: 10px;
-  border: 1px solid #CCC;
-  border-radius: 6px;
-  font-family: inherit;
-  font-size: 14px;
-  min-height: 60px;
+.news-module .header h2 {
+  margin: 0;
+  border: none;
+  padding: 0;
 }
 
-/* Lista de Notícias Recentes */
+/* Tabela do Ranking (Limpeza) */
+.leaderboard .table-container {
+  box-shadow: none; /* Remove sombra interna */
+  padding: 0;
+}
+.leaderboard table th { background-color: #f9f9f9; }
+
+/* Lista de Notícias */
 .news-feed {
   list-style: none;
   padding-left: 0;
-  max-height: 300px;
+  margin: 0;
   overflow-y: auto;
+  flex-grow: 1; /* Ocupa o espaço restante */
+  max-height: 400px; /* Limite de altura para scroll */
 }
+
 .news-feed-item {
-  border-bottom: 1px solid #f0f0f0;
-  padding: 12px 0;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: transform 0.2s;
 }
-.news-feed-item:last-child {
-  border-bottom: none;
+.news-feed-item:hover {
+  transform: translateY(-2px); /* Efeito hover sutil */
 }
-.news-feed-item h4 { /* Título */
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 4px 0;
-}
-.news-feed-item p { /* Conteúdo */
-  font-size: 14px;
-  color: #333;
+
+.news-feed-item h4 {
   margin: 0 0 8px 0;
-  word-wrap: break-word; /* Quebra palavras longas */
+  color: #1154D9; /* Azul da marca */
+  font-size: 16px;
+}
+.news-feed-item p {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
 }
 .news-feed-item .meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-.news-feed-item .date {
   font-size: 12px;
-  color: #888;
+  color: #999;
 }
-/* Botão de apagar (usando classes de ícone) */
 .delete-news-btn {
-  font-size: 18px;
-  color: #cc0000;
-  cursor: pointer;
+  color: #d32f2f;
   background: none;
   border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
 }
-/* --- Ajuste para o Header do Módulo de Notícias --- */
-/* (Isso faz o 'h2' e o botão 'Adicionar' ficarem na mesma linha) */
-.news-module .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 16px;
-}
-.news-module .header h2 {
-  margin: 0; /* Remove margens do h2 */
+.delete-news-btn:hover {
+  background-color: #ffebee;
 }

@@ -47,61 +47,96 @@
     <div class="dashboard-grid">
       
       <section class="leaderboard">
-        <h2>Ranking de Alunos (Top 5)</h2>
+        <h2>Ranking de Alunos (Top 10)</h2>
         <div class="table-container">
           <table>
             <thead>
               <tr>
                 <th>Posição</th>
                 <th>Aluno (Nome)</th>
+                <th>Turma</th>
                 <th>Pontos</th>
               </tr>
             </thead>
-            <tbody id="leaderboardTableBody">
-              </tbody>
+            <tbody id="leaderboardTableBody"></tbody>
           </table>
         </div>
       </section>
 
       <section class="news-module">
-        
         <div class="header">
           <h2>Mural de Notícias</h2>
           <button id="openModalNoticiaBtn" class="btn btn-primary">Adicionar</button>
         </div>
-
         <h3>Notícias Recentes</h3>
-        <ul id="newsListContainer" class="news-feed">
-          </ul>
-      
+        <ul id="newsListContainer" class="news-feed"></ul>
       </section>
 
-    </div> </main>
+    </div> 
+  </main>
 
   <div id="modalNoticia" class="modal-overlay">
     <div class="modal-content">
       <span id="closeModalNoticiaBtn" class="modal-close">&times;</span>
-      <h2>Publicar Nova Notícia</h2>
+      <h2>Publicar Aviso ou Evento</h2>
       
       <form id="formNoticia">
         <div class="form-group">
           <label for="newsTitle">Título</label>
-          <input type="text" id="newsTitle" placeholder="Ex: Evento de Robótica" required>
+          <input type="text" id="newsTitle" placeholder="Ex: Reunião de Pais / Feriado" required>
         </div>
+
         <div class="form-group">
-          <label for="newsContent">Conteúdo</label>
-          <textarea id="newsContent" rows="3" placeholder="Ex: Inscrições abertas..." required></textarea>
+          <label for="newsType">Tipo de Publicação</label>
+          <select id="newsType" name="type" required>
+            <option value="notice">📢 Aviso Importante (Mural)</option>
+            <option value="event">📅 Evento (Calendário)</option>
+          </select>
         </div>
-        
+
+        <div class="form-row" style="display: flex; gap: 15px;">
+          <div class="form-group" style="flex: 1;">
+            <label for="newsDate">Data</label>
+            <input type="date" id="newsDate" required>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="newsTime">Horário</label>
+            <input type="time" id="newsTime" required>
+          </div>
+        </div>
+
         <div class="form-group">
-          <label for="newsImageUrl">URL da Imagem (Opcional)</label>
-          <input type="text" id="newsImageUrl" placeholder="https://link-para-o-banner.com/imagem.png">
+          <label for="newsContent">Descrição / Detalhes</label>
+          <textarea id="newsContent" rows="3" placeholder="Ex: Detalhes do evento ou aviso..." required></textarea>
         </div>
-        
+
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Publicar Notícia</button>
+          <button type="submit" class="btn btn-primary">Publicar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div id="modalStatus" class="modal-overlay" style="z-index: 1001;">
+    <div class="modal-content">
+      <span id="closeStatusModalBtn" class="modal-close">&times;</span>
+      <h2 id="statusModalTitle">Aviso</h2>
+      <p id="statusModalMessage" style="margin: 15px 0; color: #333;"></p>
+      <div class="form-actions">
+        <button id="okStatusModalBtn" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalConfirmacao" class="modal-overlay" style="z-index: 1002;">
+    <div class="modal-content">
+      <span id="closeConfirmacaoModalBtn" class="modal-close">&times;</span>
+      <h2>Confirmação</h2>
+      <p id="confirmacaoMessage">Tem certeza?</p>
+      <div class="form-actions">
+        <button id="cancelarConfirmacaoBtn" class="btn btn-secondary">Cancelar</button>
+        <button id="confirmarAcaoBtn" class="btn btn-primary" style="background-color: #d32f2f; border-color: #d32f2f;">Confirmar</button>
+      </div>
     </div>
   </div>
   

@@ -121,6 +121,57 @@
         <button id="okStatusModalBtn" class="btn btn-primary">OK</button>
       </div>
     </div>
+    <div id="modalConfirmacao" class="modal-overlay" style="z-index: 1002;">
+    <div class="modal-content">
+      <span id="closeConfirmacaoModalBtn" class="modal-close">&times;</span>
+      <h2>Confirmação</h2>
+      <p id="confirmacaoMessage">Tem certeza?</p>
+      <div class="form-actions">
+        <button id="cancelarConfirmacaoBtn" class="btn btn-secondary">Cancelar</button>
+        <button id="confirmarAcaoBtn" class="btn btn-primary" style="background-color: #d32f2f; border-color: #d32f2f;">Confirmar</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="modalPlano" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModalPlanoBtn" class="modal-close">&times;</span>
+      <h2>Novo Plano de Aula</h2>
+      <form id="formPlano">
+        
+        <div class="form-group">
+          <label for="plano-name">Nome do Plano (Ex: Geografia 6º Ano)</label>
+          <input type="text" id="plano-name" name="name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="plano-gradeLevel">Nível Escolar</label>
+          <select id="plano-gradeLevel" name="gradeLevel" required>
+            <option value="">Selecione...</option>
+            <option value="Fundamental 1">Fundamental 1</option>
+            <option value="Fundamental 2">Fundamental 2</option>
+            <option value="Ensino Médio">Ensino Médio</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="plano-schoolYear">Ano/Série</label>
+          <select id="plano-schoolYear" name="schoolYear" required disabled>
+            <option value="">Selecione o nível primeiro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="plano-file">Arquivo PDF</label>
+          <input type="file" id="plano-file" name="pdfFile" accept="application/pdf" required>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar e Enviar PDF</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script src="../scripts/plano-detalhe.js" type="module"></script>

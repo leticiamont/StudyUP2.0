@@ -1,0 +1,398 @@
+/* =========================================
+   1. LAYOUT GERAL E RESET
+   ========================================= */
+.conteudo-content {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
+  background-color: #F4F6FA; /* Fundo cinza bem claro */
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Botão Voltar (Breadcrumb) */
+.btn-back-link {
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 20px;
+  transition: 0.2s;
+}
+.btn-back-link:hover { color: #0554F2; transform: translateX(-3px); }
+
+
+/* =========================================
+   2. TELA INICIAL: GESTÃO DE CONTEÚDOS
+   ========================================= */
+.years-view h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0 0 8px 0;
+}
+
+.years-view p {
+  font-size: 16px;
+  color: #7f8c8d;
+  margin: 0 0 30px 0;
+}
+
+.years-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 30px;
+}
+
+.year-card {
+  background: white;
+  border: 1px solid #E0E0E0;
+  border-radius: 12px;
+  padding: 40px 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.year-card:hover {
+  border-color: #0554F2;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(5, 84, 242, 0.1);
+}
+
+.year-icon {
+  font-size: 32px;
+  color: #0554F2;
+  background-color: #E3F2FD;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.year-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 15px 0;
+}
+
+.year-card span {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0554F2;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+
+/* =========================================
+   3. TELA INTERNA: MASTER-DETAIL
+   ========================================= */
+.details-header h2 {
+  font-size: 24px;
+  color: #333;
+  margin: 0;
+}
+
+.content-split {
+  display: grid;
+  grid-template-columns: 300px 1fr; /* Menu Esquerdo Fixo | Área Direita Flexível */
+  gap: 30px;
+  height: calc(100vh - 200px); 
+  margin-top: 20px;
+}
+
+/* --- COLUNA ESQUERDA: SELETOR DE SÉRIES --- */
+.left-selector-column {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.column-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+}
+
+.serie-selector-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.serie-selector-card:hover {
+  background-color: #f8f9fa;
+  border-color: #d1d1d1;
+}
+
+.serie-selector-card.active {
+  background-color: #F0F7FF;
+  border-color: #0554F2;
+}
+
+.selector-info h4 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  color: #333;
+}
+.serie-selector-card.active h4 { color: #0554F2; }
+
+.plan-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #558B2F;
+  font-weight: 600;
+}
+
+.no-plan {
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+}
+
+.btn-view-plan-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: none;
+  background-color: #E8F5E9;
+  color: #558B2F;
+  display: flex; align-items: center; justifyContent: center;
+  cursor: pointer; transition: 0.2s;
+}
+.btn-view-plan-icon:hover { background-color: #558B2F; color: white; }
+
+
+/* --- COLUNA DIREITA: WORKSPACE --- */
+.right-workspace-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.teacher-workspace {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  border-left: 6px solid #0554F2;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Header do Workspace */
+.workspace-header {
+  padding: 25px 30px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+}
+
+.workspace-title {
+  display: flex; align-items: center; gap: 12px; color: #0554F2;
+}
+.workspace-title span { font-size: 28px; }
+.workspace-title h3 { margin: 0; font-size: 20px; color: #333; }
+
+.workspace-actions { display: flex; gap: 12px; }
+
+.btn-ai-pill, .btn-pdf-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px;
+  border-radius: 30px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: white;
+  transition: 0.2s;
+}
+.btn-ai-pill { background-color: #9C27B0; }
+.btn-ai-pill:hover { background-color: #7B1FA2; box-shadow: 0 4px 10px rgba(156, 39, 176, 0.3); }
+
+.btn-pdf-pill { background-color: #0554F2; }
+.btn-pdf-pill:hover { background-color: #0341c8; box-shadow: 0 4px 10px rgba(5, 84, 242, 0.3); }
+
+/* Corpo do Workspace (Lista) */
+.workspace-body {
+  padding: 30px;
+  overflow-y: auto;
+  flex: 1;
+  background-color: #fcfcfc;
+}
+
+.empty-state-workspace {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; color: #ccc;
+}
+.empty-state-workspace span { font-size: 64px; opacity: 0.3; margin-bottom: 20px; }
+.empty-state-workspace p { font-size: 16px; font-weight: 500; color: #999; }
+
+/* CARDS DE CONTEÚDO */
+.my-contents-list { display: flex; flex-direction: column; gap: 15px; }
+
+.my-content-card {
+  display: flex; align-items: center; gap: 20px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  transition: 0.2s;
+}
+.my-content-card:hover {
+  border-color: #0554F2;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+  transform: translateX(5px);
+}
+
+.file-icon {
+  width: 48px; height: 48px; border-radius: 10px;
+  display: flex; align-items: center; justifyContent: center;
+}
+.file-icon.pdf { background-color: #FFEBEE; color: #D32F2F; }
+.file-icon.text { background-color: #E3F2FD; color: #1976D2; }
+.file-icon span { font-size: 24px; }
+
+.file-info { flex: 1; }
+.file-info strong { display: block; font-size: 15px; color: #333; margin-bottom: 4px; }
+.file-info span { font-size: 12px; color: #888; text-transform: uppercase; font-weight: 500; }
+
+.card-actions { display: flex; gap: 8px; }
+
+.btn-icon-small {
+  width: 36px; height: 36px; border-radius: 6px; border: none; background: transparent;
+  color: #777; cursor: pointer; display: flex; align-items: center; justifyContent: center; transition: 0.2s;
+}
+.btn-icon-small:hover { background-color: #f0f0f0; color: #333; }
+.btn-icon-small.view:hover { color: #0554F2; background-color: #E3F2FD; }
+.btn-icon-small.edit:hover { color: #FF9800; background-color: #FFF3E0; }
+.btn-icon-small.delete:hover { color: #D32F2F; background-color: #FFEBEE; }
+
+
+/* =========================================
+   4. MODAIS E EDITOR (LAYOUT CORRIGIDO)
+   ========================================= */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; animation: fadeIn 0.2s ease;
+}
+
+/* MODAL DE EDIÇÃO (TAMANHO MÉDIO) */
+.modal-box.large {
+  width: 700px; max-height: 90vh;
+  background: white; border-radius: 16px;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+}
+
+/* MODAL DE TELA CHEIA (PARA PDF) */
+.modal-box.x-large {
+  width: 95vw;
+  height: 90vh; /* Altura fixa grande */
+  max-width: none;
+  background: white; border-radius: 16px;
+  display: flex; flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+/* HEADER DO MODAL */
+.modal-header {
+  padding: 15px 25px;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-shrink: 0; /* Impede que o header encolha */
+}
+.modal-header h3 { margin: 0; font-size: 18px; color: #333; }
+
+.header-controls { display: flex; align-items: center; gap: 20px; }
+
+/* BOTÃO "ABRIR EM NOVA ABA" NO CABEÇALHO */
+.btn-open-external-header {
+  display: flex; align-items: center; gap: 6px;
+  background-color: #E3F2FD; color: #0554F2;
+  border: 1px solid #0554F2; padding: 6px 14px; border-radius: 6px;
+  font-weight: 600; font-size: 12px; cursor: pointer; transition: 0.2s;
+}
+.btn-open-external-header:hover { background-color: #0554F2; color: white; }
+.btn-open-external-header span { font-size: 16px; }
+
+.close-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: #999; }
+.close-btn:hover { color: #333; }
+
+/* CORPO DO MODAL (EDIÇÃO) */
+.modal-body { padding: 30px; overflow-y: auto; flex: 1; }
+
+/* CORPO DO MODAL (VISUALIZAÇÃO PDF) */
+.modal-body.view-mode {
+  padding: 0 !important;
+  flex: 1; /* Ocupa o resto da altura */
+  display: flex; flex-direction: column;
+  background-color: #333;
+  overflow: hidden;
+}
+
+/* EDITOR CUSTOMIZADO */
+.custom-quill { margin-top: 10px; background: white; border-radius: 8px; }
+.custom-quill .ql-toolbar { border-top-left-radius: 8px; border-top-right-radius: 8px; background-color: #f8f9fa; border-color: #ccc; }
+.custom-quill .ql-container { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; border-color: #ccc; min-height: 250px; font-size: 16px; background-color: white; }
+
+/* INPUTS */
+.label-edit { display: block; font-size: 14px; font-weight: 600; color: #555; margin-bottom: 8px; margin-top: 20px; }
+.label-edit:first-child { margin-top: 0; }
+.input-edit, .prompt-area { width: 100%; padding: 12px 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; }
+.input-edit:focus, .prompt-area:focus { border-color: #0554F2; box-shadow: 0 0 0 3px rgba(5, 84, 242, 0.1); }
+.prompt-area { min-height: 100px; resize: vertical; }
+
+/* FOOTER DO MODAL DE EDIÇÃO */
+.modal-footer {
+  padding: 20px 30px; border-top: 1px solid #eee; background: #fbfbfb;
+  display: flex; justify-content: flex-end; gap: 15px; flex-shrink: 0;
+}
+.btn-save-edit, .btn-save-ai, .btn-generate { background-color: #0554F2; color: white; padding: 10px 25px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+.btn-save-edit:hover { background-color: #0341c8; }
+
+/* IFRAME FULL SCREEN */
+.pdf-frame-full {
+  flex: 1; width: 100%; height: 100%; border: none; display: block; background-color: #fff;
+}
+.text-content { padding: 40px; overflow-y: auto; font-size: 16px; line-height: 1.6; color: #333; background: white; height: 100%; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}

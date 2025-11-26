@@ -1,19 +1,15 @@
-// src/scripts/login.js
-// usando módulos do Firebase via CDN (versões estáveis) - sem bundler necessário
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// ----------------- CONFIGURE AQUI (substituir pelos dados do seu Web App) -----------------
+// --- COPIE SUA API KEY DO MOBILE AQUI ---
 const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
-  measurementId: ""
+  apiKey: "AIzaSyCisZeEtSJYTjat4gCUei4taVnJYwG361Y", // Já copiei do seu upload!
+  authDomain: "studyup2-cd10e.firebaseapp.com",
+  projectId: "studyup2-cd10e",
+  storageBucket: "studyup2-cd10e.firebasestorage.app",
+  messagingSenderId: "530845484312",
+  appId: "1:530845484312:web:05320479b068d2adf64a6d"
 };
-// ------------------------------------------------------------------------------------------
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -23,78 +19,63 @@ const emailInput = document.getElementById("email");
 const senhaInput = document.getElementById("senha");
 const lembrarCheckbox = document.getElementById("lembrar");
 const errorMessage = document.getElementById("errorMessage");
+const toggleSenha = document.getElementById("toggleSenha");
 
-// Preencher email salvo
 const savedEmail = localStorage.getItem("studyupEmail");
 if (savedEmail) {
   emailInput.value = savedEmail;
   lembrarCheckbox.checked = true;
 }
 
-// Mostrar / ocultar senha handler (se toggle estiver no HTML)
-const toggleSenha = document.getElementById("toggleSenha");
 if (toggleSenha) {
   toggleSenha.addEventListener("click", () => {
     const isPwd = senhaInput.type === "password";
     senhaInput.type = isPwd ? "text" : "password";
-    toggleSenha.textContent = isPwd ? "visibility" : "visibility_off";
+    toggleSenha.textContent = isPwd ? "visibility_off" : "visibility";
   });
 }
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  errorMessage.textContent = "";
+  errorMessage.textContent = "Autenticando...";
+  errorMessage.style.color = "#666";
 
   const email = emailInput.value.trim();
   const senha = senhaInput.value;
 
-  if (!email || !senha) {
-    errorMessage.textContent = "Preencha email e senha.";
-    return;
-  }
-
   try {
-    // Login direto com Firebase Auth (frontend)
-    const cred = await signInWithEmailAndPassword(auth, email, senha);
-    const user = cred.user;
+    // 1. Login no Firebase
+    const userCredential = await signInWithEmailAndPassword(auth, email, senha);
+    const token = await userCredential.user.getIdToken();
 
-    // Pega ID token (JWT gerado pelo Firebase)
-    const token = await user.getIdToken();
-
-    // Envia para o backend para validação e leitura do role
-    const res = await fetch("http://localhost:3000/auth/login", {
+    // 2. Verifica com o Backend
+    const response = await fetch("http://localhost:3000/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ token })
     });
 
-    const body = await res.json();
-    if (!res.ok) {
-      errorMessage.textContent = body.message || "Erro ao autenticar.";
-      return;
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Erro no servidor.");
+
+    // 3. Verifica se é Admin
+    if (data.user.role !== 'admin') {
+      throw new Error("Acesso negado: Apenas administradores.");
     }
 
-    // backend retornou user e role
-    const backendUser = body.user || {};
-    // desktop só permite admin
-    if (backendUser.role !== "admin") {
-      // opcional: deslogar do firebase para segurança
-      await auth.signOut();
-      return errorMessage.textContent = "Acesso restrito: apenas administradores podem entrar aqui.";
-    }
+    // 4. Sucesso -> Salva Token
+    localStorage.setItem("authToken", token);
+    if (lembrarCheckbox.checked) localStorage.setItem("studyupEmail", email);
+    else localStorage.removeItem("studyupEmail");
 
-    // Lembrar email se marcado
-    if (lembrarCheckbox.checked) {
-      localStorage.setItem("studyupEmail", email);
-    } else {
-      localStorage.removeItem("studyupEmail");
-    }
-
-    // Login OK — redireciona para o painel do admin
     window.location.href = "inicio.html";
-  } catch (err) {
-    console.error("Erro no login:", err);
-    // mensagem amigável
-    errorMessage.textContent = "Email ou senha incorretos.";
+
+  } catch (error) {
+    console.error(error);
+    let msg = "Erro ao entrar.";
+    if (error.code === 'auth/invalid-credential') msg = "Email ou senha incorretos.";
+    if (error.message) msg = error.message;
+    errorMessage.textContent = msg;
+    errorMessage.style.color = "red";
   }
 });

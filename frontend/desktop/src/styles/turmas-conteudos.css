@@ -97,3 +97,107 @@
   width: 200px; /* Largura fixa para os dropdowns de filtro */
   flex-shrink: 0;
 }
+
+/* --- Layout do Modal de Turma (Grid) --- */
+#modalTurma .modal-content {
+  max-width: 700px; /* Mais largo */
+  width: 90%;
+  max-height: 85vh; /* Altura máxima de 85% da tela */
+  overflow-y: auto; /* Adiciona scroll vertical se necessário */
+  
+  /* Garante que o padding não suma com o scroll */
+  box-sizing: border-box;
+}
+
+#formTurma {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 2 Colunas */
+  gap: 20px;
+}
+
+/* Campos que ocupam a linha toda */
+.full-width {
+  grid-column: span 2;
+}
+
+/* Estilo dos Dias da Semana */
+.week-days-selector {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+.day-checkbox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+.day-checkbox input {
+  margin-bottom: 4px;
+}
+
+/* Nova Lista de Seleção de Alunos (Scrollável e Bonita) */
+.student-selection-box {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  height: 180px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #f9f9f9;
+}
+
+.student-item {
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  border-bottom: 1px solid #eee;
+}
+.student-item:last-child { border-bottom: none; }
+.student-item input { margin-right: 10px; }
+.student-item label { cursor: pointer; width: 100%; font-size: 14px;}
+.student-item:hover { background-color: #e6f7ff; }
+
+/* Mensagem quando não há alunos */
+.no-students-msg {
+  color: #888;
+  font-style: italic;
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* ... estilos anteriores ... */
+
+/* --- Modal de Visualização de PDF (Grandão) --- */
+#modalViewPDF .modal-content {
+  width: 90%;
+  height: 90%;
+  max-width: none; /* Remove o limite de 500px */
+  display: flex;
+  flex-direction: column;
+  padding: 0; /* Remove padding para o PDF encostar na borda */
+  background-color: #333; /* Fundo escuro para leitura */
+}
+
+/* Cabeçalho do Modal PDF */
+.pdf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #fff;
+  border-bottom: 1px solid #eee;
+}
+
+.pdf-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+/* O visualizador em si */
+#pdfViewerFrame {
+  flex: 1; /* Ocupa todo o espaço restante */
+  width: 100%;
+  border: none;
+  background-color: #f4f4f4;
+}

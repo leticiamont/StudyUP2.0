@@ -1,3 +1,2 @@
-Nome Completo;Data de Nascimento;Nível Escolar
-Aluno Exemplo 1;2010-05-20;Ensino Fundamental 2
-Aluno Exemplo 2;2008-03-15;Ensino Médio
+NomeCompleto;DataNascimento;NivelEscolar;AnoSerie
+Aluno Teste;2010-05-20;Fundamental 2;6º Ano

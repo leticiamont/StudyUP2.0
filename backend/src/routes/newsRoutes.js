@@ -3,13 +3,13 @@ import { createNews, getNews, deleteNews } from "../controllers/newsController.j
 
 const router = Router();
 
-// Endpoint para criar notícia
+// Rota POST (Criar Notícia) - SEM o middleware de upload
 router.post("/", createNews);
 
-// Endpoint para listar as últimas notícias
+// Rota GET (Listar)
 router.get("/", getNews);
 
-// Endpoint para apagar uma notícia
+// Rota DELETE (Apagar)
 router.delete("/:id", deleteNews);
 
 export default router;

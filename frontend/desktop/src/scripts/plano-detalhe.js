@@ -13,14 +13,15 @@ let currentEditingModuleId = null;
 let currentEditingTopicId = null;
 
 // --- Seleção Principal de Elementos ---
-// (Adiciona os seletores do Modal de Status)
 let headerTitle, salvarPlanoBtn, planoNameInput, planoGradeInput, modulosList, topicosList, topicosHeaderTitle, openModalTopicoBtn;
 let modalModulo, modalTopico, formModulo, formTopico;
 let modalStatus, statusModalTitle, statusModalMessage, closeStatusModalBtn, okStatusModalBtn;
+// Variáveis do Modal de Confirmação
+let modalConfirmacao, confirmacaoMessage, closeConfirmacaoModalBtn, cancelarConfirmacaoBtn, confirmarAcaoBtn;
+let actionToConfirm = null;
 
 /**
  * @description Pega todos os elementos do DOM após o 'componentsLoaded'
- * Isso previne o 'TypeError: Cannot read properties of null'
  */
 function selecionarElementosDOM() {
   headerTitle = document.getElementById('plano-header-title');
@@ -32,7 +33,7 @@ function selecionarElementosDOM() {
   topicosHeaderTitle = document.getElementById('topicos-header-title');
   openModalTopicoBtn = document.getElementById('openModalTopicoBtn');
   
-  // Modais
+  // Modais de Edição
   modalModulo = document.getElementById('modalModulo');
   modalTopico = document.getElementById('modalTopico');
   formModulo = document.getElementById('formModulo');
@@ -45,9 +46,16 @@ function selecionarElementosDOM() {
   closeStatusModalBtn = document.getElementById('closeStatusModalBtn');
   okStatusModalBtn = document.getElementById('okStatusModalBtn');
 
+  // Modal de Confirmação (CORRIGIDO: Agora é selecionado antes do return)
+  modalConfirmacao = document.getElementById('modalConfirmacao');
+  confirmacaoMessage = document.getElementById('confirmacaoMessage');
+  closeConfirmacaoModalBtn = document.getElementById('closeConfirmacaoModalBtn');
+  cancelarConfirmacaoBtn = document.getElementById('cancelarConfirmacaoBtn');
+  confirmarAcaoBtn = document.getElementById('confirmarAcaoBtn');
+
   // Checagem de segurança
-  if (!headerTitle || !modalModulo || !modalTopico || !modalStatus) {
-    console.error("ERRO CRÍTICO: Elementos principais do Construtor de Planos não encontrados. Verifique o HTML.");
+  if (!headerTitle || !modalModulo || !modalTopico || !modalStatus || !modalConfirmacao) {
+    console.error("ERRO CRÍTICO: Elementos principais do Construtor de Planos não encontrados.");
     return false;
   }
   return true;
@@ -65,13 +73,24 @@ function uuidv4() {
 
 // --- Funções (Modal Status) ---
 const showStatusModal = (title, message) => {
-  if (!modalStatus) return; // Segurança
+  if (!modalStatus) return; 
   statusModalTitle.textContent = title;
   statusModalMessage.textContent = message;
   modalStatus.style.display = 'flex';
 };
 const closeStatusModal = () => {
   if (modalStatus) modalStatus.style.display = 'none';
+};
+
+// --- Funções (Modal Confirmação) --- (ADICIONADAS)
+const showConfirm = (msg, callback) => {
+  confirmacaoMessage.textContent = msg;
+  actionToConfirm = callback;
+  modalConfirmacao.style.display = 'flex';
+};
+const closeConfirm = () => {
+  modalConfirmacao.style.display = 'none';
+  actionToConfirm = null;
 };
 
 // --- Funções de Renderização (Atualizar a UI) ---
@@ -190,12 +209,11 @@ async function salvarPlano() {
       }
     }
     
-    // --- SUCESSO E REDIRECIONAMENTO (A CORREÇÃO ESTÁ AQUI) ---
+    // --- SUCESSO E REDIRECIONAMENTO ---
     statusModalTitle.textContent = 'Sucesso!';
     statusModalMessage.textContent = 'Plano salvo. A voltar para a lista...';
     
     setTimeout(() => {
-      // AVISA para qual aba voltar (adiciona ?tab=planos)
       window.location.href = './turmas-e-conteudos.html?tab=planos';
     }, 1500);
 
@@ -207,27 +225,21 @@ async function salvarPlano() {
 
 // --- Ponto de Entrada Principal ---
 
-// 1. Carrega o layout (Menu/Topbar)
 initLayout(); 
 
-// 2. Ouve o evento do layout (para garantir que o HTML do menu está pronto)
 document.addEventListener('componentsLoaded', () => {
   console.log('[plano-detalhe.js] Componentes carregados.');
   
-  // 3. AGORA é seguro selecionar os elementos do DOM
   if (!selecionarElementosDOM()) {
-    return; // Para se os elementos não forem encontrados
+    return; 
   }
 
-  // 4. Carrega os dados do plano (da URL)
   loadPlanoData();
 
-  // 5. Anexa todos os listeners
-  
-  // Botão "Salvar Alterações" (no topo)
+  // Listeners
   salvarPlanoBtn.addEventListener('click', salvarPlano);
 
-  // --- Lógica dos Módulos (Coluna 2) ---
+  // --- Lógica dos Módulos ---
   document.getElementById('openModalModuloBtn').addEventListener('click', () => {
     currentEditingModuleId = null;
     formModulo.reset();
@@ -241,13 +253,13 @@ document.addEventListener('componentsLoaded', () => {
     const id = li.dataset.id;
     
     if (e.target.classList.contains('delete-btn-modulo')) {
-      if (confirm('Tem certeza que quer apagar este módulo e TODOS os tópicos dentro dele?')) {
+      showConfirm('Tem certeza que quer apagar este módulo e TODOS os tópicos dentro dele?', () => {
         plano.modules = plano.modules.filter(m => m.id !== id);
         if (selectedModuleId === id) selectedModuleId = null;
         renderModules();
         renderTopics();
-      }
-    } 
+      });
+    }
     else if (e.target.classList.contains('edit-btn-modulo')) {
       currentEditingModuleId = id;
       const modulo = plano.modules.find(m => m.id === id);
@@ -263,9 +275,8 @@ document.addEventListener('componentsLoaded', () => {
     }
   });
 
-  // Salvar (Formulário do Modal Módulo)
   formModulo.addEventListener('submit', (e) => {
-    e.preventDefault(); // <-- Isto previne o recarregamento (o bug #1)
+    e.preventDefault(); 
     const data = new FormData(formModulo);
     const moduloData = {
       title: data.get('title'),
@@ -283,7 +294,7 @@ document.addEventListener('componentsLoaded', () => {
     renderModules();
   });
   
-  // --- Lógica dos Tópicos (Coluna 3) ---
+  // --- Lógica dos Tópicos ---
   openModalTopicoBtn.addEventListener('click', () => {
     currentEditingTopicId = null;
     formTopico.reset();
@@ -298,10 +309,10 @@ document.addEventListener('componentsLoaded', () => {
     if (!modulo) return;
 
     if (e.target.classList.contains('delete-btn-topico')) {
-      if (confirm('Tem certeza que quer apagar este tópico?')) {
+      showConfirm('Tem certeza que quer apagar este tópico?', () => {
         modulo.topics = modulo.topics.filter(t => t.id !== id);
         renderTopics();
-      }
+      });
     } 
     else if (e.target.classList.contains('edit-btn-topico')) {
       currentEditingTopicId = id;
@@ -313,9 +324,8 @@ document.addEventListener('componentsLoaded', () => {
     }
   });
 
-  // Salvar (Formulário do Modal Tópico)
   formTopico.addEventListener('submit', (e) => {
-    e.preventDefault(); // <-- Isto previne o recarregamento
+    e.preventDefault(); 
     const data = new FormData(formTopico);
     const topicoData = {
       title: data.get('title'),
@@ -337,7 +347,15 @@ document.addEventListener('componentsLoaded', () => {
   document.getElementById('closeModalModuloBtn').addEventListener('click', () => modalModulo.style.display = 'none');
   document.getElementById('closeModalTopicoBtn').addEventListener('click', () => modalTopico.style.display = 'none');
   
-  // Listeners do Modal de Status (NOVO)
+  // Listeners do Modal de Status
   closeStatusModalBtn.addEventListener('click', closeStatusModal);
   okStatusModalBtn.addEventListener('click', closeStatusModal);
+
+  // Listeners do Modal de Confirmação (ADICIONADO)
+  closeConfirmacaoModalBtn.addEventListener('click', closeConfirm);
+  cancelarConfirmacaoBtn.addEventListener('click', closeConfirm);
+  confirmarAcaoBtn.addEventListener('click', () => {
+    if (actionToConfirm) actionToConfirm();
+    closeConfirm();
+  });
 });

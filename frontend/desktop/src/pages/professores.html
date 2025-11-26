@@ -15,18 +15,14 @@
   <div id="topbar-container"></div>
 
   <main class="content">
-    
     <div class="header">
       <h1>Gerenciamento de Professores</h1>
       <button id="openModalProfessorBtn" class="btn btn-primary">Adicionar Professor</button>
     </div>
-
     <div class="filters">
-      <div class="search-bar">
-        <input type="text" id="prof-search" placeholder="Buscar por nome ou email...">
-      </div>
-      <select id="prof-filter-sort" class="filter-select">
-        <option value="asc">Ordem Alfabética (A-Z)</option>
+      <div class="search-bar"><input type="text" id="prof-search" placeholder="Buscar..."></div>
+      <select id="prof-filter-sort" class="filter-select" style="color: #333;">
+        <option value="asc" selected>Ordem Alfabética (A-Z)</option>
         <option value="desc">Ordem Alfabética (Z-A)</option>
       </select>
     </div>
@@ -37,7 +33,7 @@
           <tr>
             <th>NOME</th>
             <th>EMAIL</th>
-            <th>TURMAS ATRIBUÍDAS</th>
+            <th>TURMAS</th> <th>STATUS</th>
             <th>AÇÕES</th>
           </tr>
         </thead>
@@ -49,20 +45,20 @@
   <div id="modalProfessor" class="modal-overlay">
     <div class="modal-content">
       <span id="closeModalProfessorBtn" class="modal-close">&times;</span>
-      <h2>Novo Professor</h2>
-      <form id="formProfessor">
+      <h2 id="modalTitle">Novo Professor</h2> <form id="formProfessor">
         <div class="form-group">
           <label for="prof-name">Nome Completo</label>
           <input type="text" id="prof-name" name="displayName" required>
         </div>
         <div class="form-group">
-          <label for="prof-email">Email de Login (Real)</label>
+          <label for="prof-email">Email de Login</label>
           <input type="text" id="prof-email" name="email" required>
         </div>
-        <div class="form-group" id="prof-password-group">
-          <label for="prof-password">Senha Provisória</label>
-          <input type="text" id="prof-password" name="password" required>
-        </div>
+        
+        <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+          Uma senha padrão <strong>(professor123)</strong> será gerada automaticamente.
+        </p>
+
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
@@ -79,6 +75,18 @@
       </pre>
       <div class="form-actions">
         <button id="okStatusModalBtn" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="modalConfirmacao" class="modal-overlay" style="z-index: 1002;">
+    <div class="modal-content">
+      <span id="closeConfirmacaoModalBtn" class="modal-close">&times;</span>
+      <h2>Confirmação</h2>
+      <p id="confirmacaoMessage">Tem certeza?</p>
+      <div class="form-actions">
+        <button id="cancelarConfirmacaoBtn" class="btn btn-secondary">Cancelar</button>
+        <button id="confirmarAcaoBtn" class="btn btn-primary" style="background-color: #d32f2f; border-color: #d32f2f;">Confirmar</button>
       </div>
     </div>
   </div>

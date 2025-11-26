@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Ajuste o IP rodar no para celular
-const BASE_URL = 'http://localhost:3000'; 
+const BASE_URL = 'http://192.168.1.5:3000'; 
 
 const apiFetch = async (endpoint, options = {}) => {
   const token = await AsyncStorage.getItem('userToken');

@@ -15,7 +15,9 @@ export const authMiddleware = async (req, res, next) => {
     const userDoc = await db.collection("users").doc(uid).get();
     
     if (!userDoc.exists) {
-      return res.status(404).json({ message: "Utilizador autenticado não encontrado no banco de dados." });
+      // Se cair aqui, é porque o usuário tá no Auth mas não no Banco
+      console.error("Usuário não encontrado no Firestore:", uid); 
+      return res.status(404).json({ message: "Utilizador não encontrado." });
     }
 
     req.user = {

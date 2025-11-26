@@ -34,8 +34,8 @@
         </div>
         <select id="turmas-filter-grade" class="filter-select">
           <option value="">Filtrar por Nível</option>
-          <option value="Ensino Fundamental 1">Ensino Fundamental 1</option>
-          <option value="Ensino Fundamental 2">Ensino Fundamental 2</option>
+          <option value="Fundamental 1">Fundamental 1</option>
+          <option value="Fundamental 2">Fundamental 2</option>
           <option value="Ensino Médio">Ensino Médio</option>
         </select>
         <select id="turmas-filter-sort" class="filter-select">
@@ -50,7 +50,7 @@
             <tr>
               <th>NOME DA TURMA</th>
               <th>PROFESSOR</th>
-              <th>NÍVEL ESCOLAR</th>
+              <th>NÍVEL/ANO</th>
               <th>PLANO DE AULA</th>
               <th>HORÁRIO</th>
               <th>Nº ALUNOS</th>
@@ -75,8 +75,8 @@
         </div>
         <select id="planos-filter-grade" class="filter-select">
           <option value="">Filtrar por Nível</option>
-          <option value="Ensino Fundamental 1">Ensino Fundamental 1</option>
-          <option value="Ensino Fundamental 2">Ensino Fundamental 2</option>
+          <option value="Fundamental 1">Fundamental 1</option>
+          <option value="Fundamental 2">Fundamental 2</option>
           <option value="Ensino Médio">Ensino Médio</option>
         </select>
       </div>
@@ -84,9 +84,10 @@
        <div class="table-container">
         <table>
           <thead>
-            <tr>              
+            <tr>
               <th>NOME DO PLANO</th>
-              <th>NÍVEL ESCOLAR</th>
+              <th>NÍVEL/ANO</th>
+              <th>ARQUIVO (PDF)</th>
               <th>AÇÕES</th>
             </tr>
           </thead>
@@ -100,54 +101,153 @@
   <div id="modalTurma" class="modal-overlay">
     <div class="modal-content">
       <span id="closeModalTurmaBtn" class="modal-close">&times;</span>
-      
-      <h2 id="turmaModalTitle">Nova Turma (Centro de Comando)</h2> 
-      
+      <h2 id="turmaModalTitle">Nova Turma</h2>
       <form id="formTurma">
-        <div class="form-group">
-          <label for="turma-name">Nome da Turma (Ex: 601, 7A)</label>
+        
+        <div class="form-group full-width">
+          <label for="turma-name">Nome da Turma (Ex: Turma A, Turma B)</label>
           <input type="text" id="turma-name" name="name" required>
         </div>
+
         <div class="form-group">
-          <label for="turma-gradeLevel">Nível Escolar</label>
-          <select id="turma-gradeLevel" name="gradeLevel" required>
-            <option value="">Selecione o nível</option>
-            <option value="Ensino Fundamental 1">Ensino Fundamental 1</option>
-            <option value="Ensino Fundamental 2">Ensino Fundamental 2</option>
+          <label for="turma-educationLevel">Nível de Ensino</label>
+          <select id="turma-educationLevel" name="educationLevel" required>
+            <option value="">Selecione...</option>
+            <option value="Fundamental 1">Fundamental 1</option>
+            <option value="Fundamental 2">Fundamental 2</option>
             <option value="Ensino Médio">Ensino Médio</option>
           </select>
         </div>
+
         <div class="form-group">
-          <label for="turma-schedule">Horário (Ex: Seg 8h-10h)</label>
-          <input type="text" id="turma-schedule" name="schedule">
+          <label for="turma-schoolYear">Ano/Série</label>
+          <select id="turma-schoolYear" name="schoolYear" required disabled>
+            <option value="">Selecione o Nível primeiro</option>
+          </select>
         </div>
-        <hr style="border: 1px solid #eee; margin: 16px 0;">
+
+        <div class="form-group full-width">
+          <label>Dias da Semana</label>
+          <div class="week-days-selector">
+            <label class="day-checkbox"><input type="checkbox" name="days" value="Seg">Seg</label>
+            <label class="day-checkbox"><input type="checkbox" name="days" value="Ter">Ter</label>
+            <label class="day-checkbox"><input type="checkbox" name="days" value="Qua">Qua</label>
+            <label class="day-checkbox"><input type="checkbox" name="days" value="Qui">Qui</label>
+            <label class="day-checkbox"><input type="checkbox" name="days" value="Sex">Sex</label>
+          </div>
+        </div>
+
         <div class="form-group">
-          <label for="turma-teacherId">Professor Responsável</label>
+          <label for="turma-startTime">Início</label>
+          <input type="time" id="turma-startTime" name="startTime" required>
+        </div>
+        <div class="form-group">
+          <label for="turma-endTime">Fim</label>
+          <input type="time" id="turma-endTime" name="endTime" required>
+        </div>
+
+        <div class="form-group">
+          <label for="turma-teacherId">Professor</label>
           <select id="turma-teacherId" name="teacherId" required>
             <option value="">Carregando...</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="turma-planId">Plano de Aula (Base)</label>
+          <label for="turma-planId">Plano de Aula (Opcional)</label>
           <select id="turma-planId" name="planId">
             <option value="">Carregando...</option>
           </select>
         </div>
-        <div class="form-group">
-          <label for="turma-studentIds">Atribuir Alunos (Segure Ctrl/Cmd)</label>
-          <select id="turma-studentIds" name="studentIds" multiple style="height: 150px;">
-            <option value="">Carregando...</option>
-          </select>
+
+        <div class="form-group full-width">
+          <label>Selecione os Alunos (Filtrados pelo Ano/Série)</label>
+          <div id="student-selection-container" class="student-selection-box">
+            <div class="no-students-msg">Selecione um Ano/Série para ver os alunos disponíveis.</div>
+          </div>
         </div>
-        <div class="form-actions">
-          <button type="submit" id="turmaModalSubmitBtn" class="btn btn-primary">Salvar Turma e Vínculos</button>
+
+        <div class="form-actions full-width">
+          <button type="submit" id="turmaModalSubmitBtn" class="btn btn-primary">Salvar Turma</button>
         </div>
       </form>
     </div>
   </div>
 
-  <script src="../scripts/turmas-e-conteudos.js" type="module"></script>
+  <div id="modalPlano" class="modal-overlay">
+    <div class="modal-content">
+      <span id="closeModalPlanoBtn" class="modal-close">&times;</span>
+      <h2>Novo Plano de Aula</h2>
+      <form id="formPlano">
+        
+        <div class="form-group">
+          <label for="plano-name">Nome do Plano (Ex: Geografia 6º Ano)</label>
+          <input type="text" id="plano-name" name="name" required>
+        </div>
 
+        <div class="form-group">
+          <label for="plano-gradeLevel">Nível Escolar</label>
+          <select id="plano-gradeLevel" name="gradeLevel" required>
+            <option value="">Selecione...</option>
+            <option value="Fundamental 1">Fundamental 1</option>
+            <option value="Fundamental 2">Fundamental 2</option>
+            <option value="Ensino Médio">Ensino Médio</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="plano-schoolYear">Ano/Série</label>
+          <select id="plano-schoolYear" name="schoolYear" required disabled>
+            <option value="">Selecione o nível primeiro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="plano-file">Arquivo PDF</label>
+          <input type="file" id="plano-file" name="pdfFile" accept="application/pdf" required>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar e Enviar PDF</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modalStatus" class="modal-overlay" style="z-index: 1001;">
+    <div class="modal-content">
+      <span id="closeStatusModalBtn" class="modal-close">&times;</span>
+      <h2 id="statusModalTitle">Aviso</h2>
+      <p id="statusModalMessage" style="margin: 15px 0; color: #333;"></p>
+      <div class="form-actions">
+        <button id="okStatusModalBtn" class="btn btn-primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalConfirmacao" class="modal-overlay" style="z-index: 1002;">
+    <div class="modal-content">
+      <span id="closeConfirmacaoModalBtn" class="modal-close">&times;</span>
+      <h2>Confirmação</h2>
+      <p id="confirmacaoMessage">Tem certeza?</p>
+      <div class="form-actions">
+        <button id="cancelarConfirmacaoBtn" class="btn btn-secondary">Cancelar</button>
+        <button id="confirmarAcaoBtn" class="btn btn-primary" style="background-color: #d32f2f; border-color: #d32f2f;">Confirmar</button>
+      </div>
+    </div>
+  </div>
+  <div id="modalViewPDF" class="modal-overlay" style="z-index: 2000;">
+    <div class="modal-content">
+      
+      <div class="pdf-header">
+        <h2 id="pdfTitle">Visualizando Arquivo</h2>
+        <span id="closePdfBtn" class="modal-close" style="position: static;">&times;</span>
+      </div>
+
+      <iframe id="pdfViewerFrame" src=""></iframe>
+      
+    </div>
+  </div>
+
+  <script src="../scripts/turmas-e-conteudos.js" type="module"></script>
 </body>
 </html>
