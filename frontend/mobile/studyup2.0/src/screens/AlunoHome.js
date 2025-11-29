@@ -1,31 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
-    StyleSheet, Text, View, ScrollView, TouchableOpacity, StatusBar, RefreshControl 
+    StyleSheet, Text, View, ScrollView, TouchableOpacity, StatusBar, RefreshControl, Platform, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 
 export default function AlunoHome({ route }) {
   const user = route.params?.user || {};
   const firstName = (user.name || user.displayName || 'Aluno').split(' ')[0]; 
-  const points = user.points || 1200; 
-
-  // Estado para controlar o refresh
+  const points = user.points || 1200; // Usa os pontos REAIS do usuário
+  const navigation = useNavigation();
+  
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // Simulação de reload (aqui você chamaria sua API para atualizar pontos/user)
+    // Aqui seria o local para chamar a API e buscar dados atualizados
     setTimeout(() => {
       setRefreshing(false);
     }, 2000);
   }, []);
 
+  // --- FUNÇÃO DE CONTINUAR (Navega para a aba de Conteúdo) ---
+  const handleContinue = () => {
+      navigation.navigate('Aulas');
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       
-      {/* 1. HEADER */}
+      {/* 1. HEADER (Pontos Dinâmicos) */}
       <View style={styles.header}>
         <Text style={styles.logo}>STUDY<Text style={styles.logoUp}>UP</Text></Text>
         
@@ -47,12 +53,12 @@ export default function AlunoHome({ route }) {
         }
       >
         
-        {/* 2. CARD DE BOAS-VINDAS */}
+        {/* 2. CARD DE BOAS-VINDAS / CONTINUAR */}
         <View style={styles.welcomeCard}>
           <View>
             <Text style={styles.welcomeTitle}>Olá, {firstName}!</Text>
             <Text style={styles.welcomeSubtitle}>Pronta para aprender hoje?</Text>
-            <TouchableOpacity style={styles.continueBtn}>
+            <TouchableOpacity style={styles.continueBtn} onPress={handleContinue}> 
               <Text style={styles.continueText}>Continuar Módulo 1</Text>
               <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" />
             </TouchableOpacity>
@@ -60,7 +66,7 @@ export default function AlunoHome({ route }) {
           <MaterialCommunityIcons name="rocket-launch" size={60} color="rgba(255,255,255,0.2)" style={{position:'absolute', right: 10, bottom: 10}} />
         </View>
 
-        {/* 3. PRÓXIMAS ATIVIDADES */}
+        {/* 3. PRÓXIMAS ATIVIDADES (Mock) */}
         <Text style={styles.sectionTitle}>Para Hoje</Text>
         <View style={styles.taskList}>
             
@@ -88,7 +94,7 @@ export default function AlunoHome({ route }) {
 
         </View>
 
-        {/* 4. CONQUISTAS RECENTES */}
+        {/* 4. CONQUISTAS RECENTES (Mock) */}
         <Text style={styles.sectionTitle}>Conquistas</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.achievementsRow}>
             <View style={styles.badgeCard}>
@@ -199,5 +205,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#eee'
   },
-  badgeText: { fontSize: 11, color: '#555', marginTop: 8, textAlign: 'center', fontWeight: '600' }
+  badgeText: { fontSize: 11, color: '#555', marginTop: 8, textAlign: 'center', fontWeight: '600' },
+
+  // Estilos de Modal de Perfil (Para evitar crash do Modal)
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-start', alignItems: 'flex-end' },
+  profileMenu: { width: 280, backgroundColor: '#fff', marginTop: 60, marginRight: 20, borderRadius: 15, padding: 20, elevation: 10 },
+  profileHeader: { alignItems: 'center', marginBottom: 20 },
+  profileName: { fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 10, textAlign: 'center' },
+  profileEmail: { fontSize: 14, color: '#666', textAlign: 'center' },
+  profileDivider: { height: 1, backgroundColor: '#eee', marginBottom: 15 },
+  profileOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+  profileOptionText: { fontSize: 16, color: '#333', marginLeft: 15, fontWeight: '500' },
+  profileFooter: { marginTop: 15, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10, alignItems: 'center' },
+  versionText: { fontSize: 12, color: '#aaa' }
 });

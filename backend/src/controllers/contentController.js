@@ -16,42 +16,48 @@ const CONTENT_COLLECTION = 'contents';
 
 export const uploadContent = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'Nenhum ficheiro enviado.' });
+    // Verifica se é upload de arquivo (req.file) ou texto (req.body apenas)
+    let publicUrl = null;
+    let mimeType = 'text/plain';
+    let originalName = req.body.name || 'Sem Título';
+
+    // 1. SE FOR ARQUIVO (UPLOAD)
+    if (req.file) {
+        console.log('Iniciando upload para o Cloudinary...');
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+            resource_type: 'auto',
+            folder: 'studyup_uploads',
+            use_filename: true,
+            unique_filename: false,
+        });
+        publicUrl = uploadResult.secure_url;
+        mimeType = req.file.mimetype;
+        originalName = req.file.originalname;
+        
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); // Limpa local
+    } 
+    // 2. SE FOR TEXTO (EDITOR/IA)
+    else if (req.body.content) {
+        // Mantém lógica de texto
     }
-    
-    const file = req.file;
-    console.log('Iniciando upload para o Cloudinary...');
-
-    // Envia o arquivo local para o Cloudinary
-    const uploadResult = await cloudinary.uploader.upload(file.path, {
-      resource_type: 'auto',
-      folder: 'studyup_uploads',
-      use_filename: true,
-      unique_filename: false,
-    });
-
-    const publicUrl = uploadResult.secure_url;
 
     // Salva os dados no Firestore
     const contentData = {
-      name: file.originalname,
-      type: file.mimetype,
+      name: req.body.name || originalName,
+      type: req.body.type || (req.file ? 'pdf' : 'text'), // Força tipo
+      content: req.body.content || "", // Se for texto
       url: publicUrl,
       planId: req.body.planId || null,
-      classId: req.body.classId || null, 
+      classId: req.body.classId || null,
+      gradeLevel: req.body.gradeLevel || null, 
+      schoolYear: req.body.schoolYear || null, // <--- ADICIONADO: CAMPO CRUCIAL
       authorId: req.user?.uid || 'anonym', 
       createdAt: new Date().toISOString(),
     };
     
-    const docRef = await db.collection(CONTENT_COLLECTION).add(contentData);
+    const docRef = await db.collection('contents').add(contentData);
 
-    // Limpeza do arquivo local (pasta uploads do PC)
-    if (fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
-    }
-
-    console.log('Sucesso! Arquivo disponível em:', publicUrl);
+    console.log('Salvo com sucesso:', contentData.name);
     res.status(201).json({ id: docRef.id, ...contentData });
 
   } catch (error) {
