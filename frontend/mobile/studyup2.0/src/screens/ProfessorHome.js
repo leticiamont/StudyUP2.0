@@ -184,37 +184,19 @@ export default function ProfessorHome({ route }) {
   }, []);
   
   // ... (Funções do Perfil) ...
-    const handleLogout = () => {
+  const handleLogout = async () => {
     const executeLogout = async () => {
       try {
-        // 1. Desloga do Firebase
         await signOut(auth); 
-        // 2. Limpa o armazenamento local (Token)
         await AsyncStorage.removeItem('userToken'); 
-        // 3. Reseta a navegação para o Login (impede voltar)
         navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-      } catch (error) {
-        console.error("Erro ao sair:", error);
-        Alert.alert("Erro", "Não foi possível sair. Tente novamente.");
-      }
+      } catch (error) { console.error("Erro ao sair:", error); }
     };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Olá, ${userName}.\nDeseja realmente sair do aplicativo?`)) {
-        executeLogout();
-      }
-    } else {
-      Alert.alert(
-        `Olá, ${userName}`, // Título personalizado
-        "Deseja realmente sair do aplicativo?", 
-        [
-          { text: "Cancelar", style: "cancel" },
-          { text: "Sair", style: "destructive", onPress: executeLogout }
-        ]
-      );
-    }
+    Alert.alert("Sair", "Deseja realmente sair do aplicativo?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Sair", style: "destructive", onPress: executeLogout }
+    ]);
   };
-
 
   const handleChangePassword = async () => {
     Alert.alert("Redefinir Senha", "Funcionalidade de redefinição de senha ativada!");

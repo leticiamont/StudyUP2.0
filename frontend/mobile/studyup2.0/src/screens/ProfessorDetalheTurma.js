@@ -7,6 +7,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../service/apiService';
+import * as DocumentPicker from 'expo-document-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfessorDetalheTurma({ route }) {
   const navigation = useNavigation();
@@ -17,27 +19,47 @@ export default function ProfessorDetalheTurma({ route }) {
   const [conteudosTurma, setConteudosTurma] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Estados de Modal removidos parcialmente pois não serão usados pelo botão +,
+  // mas mantidos caso queira reativar futuramente ou usar outra lógica.
+  const [modalVisible, setModalVisible] = useState(false);
+  const [bankModalVisible, setBankModalVisible] = useState(false);
+  const [bancoPlanos, setBancoPlanos] = useState([]); 
+
   if (!turma) return null;
 
   const fetchData = async () => {
     setLoading(true);
     try {
       if (activeTab === 'alunos') {
-        // 1. Alunos: Busca alunos vinculados à esta turma
         const data = await api.get(`/api/users?role=student&classId=${turma.id}`);
         setAlunos(Array.isArray(data) ? data : []);
       } else {
-        // 2. Conteúdo: BUSCA POR CLASSID (Histórico da Turma)
-        const [contentsData, plansData] = await Promise.all([
-            // CRUCIAL: Busca o conteúdo que foi SALVO com o ID desta turma
-            api.get(`/api/contents?classId=${turma.id}`), 
-            api.get(`/api/plans?classId=${turma.id}`), 
+        // BUSCA HÍBRIDA (Geral + Específico)
+        const [allContentsData, plansData] = await Promise.all([
+            api.get(`/api/contents`),
+            api.get(`/api/plans?classId=${turma.id}`)
         ]);
 
-        const validContents = Array.isArray(contentsData) ? contentsData : [];
+        const validContents = Array.isArray(allContentsData) ? allContentsData : [];
         const validPlans = Array.isArray(plansData) ? plansData : [];
         
-        setConteudosTurma([...validContents, ...validPlans]);
+        const conteudosFiltrados = validContents.filter(c => {
+            const ehDestaTurma = c.classId === turma.id;
+            
+            const serieConteudo = (c.schoolYear || "").trim();
+            const serieTurma = (turma.schoolYear || "").trim();
+            const nivelConteudo = (c.gradeLevel || "").trim();
+            const nivelTurma = (turma.gradeLevel || turma.educationLevel || "").trim();
+
+            const ehDaSerie = !c.classId && (
+                (serieConteudo && serieConteudo === serieTurma) || 
+                (nivelConteudo && nivelConteudo === nivelTurma)
+            );
+            
+            return ehDestaTurma || ehDaSerie;
+        });
+
+        setConteudosTurma([...conteudosFiltrados, ...validPlans]);
       }
     } catch (error) {
       console.log("Erro ao buscar dados:", error);
@@ -50,7 +72,12 @@ export default function ProfessorDetalheTurma({ route }) {
     if (turma?.id) fetchData();
   }, [activeTab, turma]);
 
-  // Função para editar/visualizar conteúdo
+  // Funções de Upload mantidas caso precise reativar, mas não estão sendo chamadas na UI agora
+  const handleUploadDevice = async () => { /* ... */ };
+  const openBankModal = async () => { /* ... */ };
+  const assignContentToClass = async (item) => { /* ... */ };
+
+  // Renderização de item da lista (Card)
   const renderContentItem = ({ item }) => (
     <View style={styles.cardContent}>
       <View style={styles.iconBox}>
@@ -62,17 +89,23 @@ export default function ProfessorDetalheTurma({ route }) {
       </View>
       <View style={{flex: 1}}>
         <Text style={styles.contentName} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.contentType}>
-            {item.url ? 'Documento PDF' : 'Plano de Aula (IA)'}
-        </Text>
+        <View style={{flexDirection:'row', alignItems:'center'}}>
+            <Text style={styles.contentType}>
+                {item.url ? 'Documento PDF' : 'Plano de Aula'}
+            </Text>
+            {!item.classId && (
+                <View style={styles.tagGeneral}>
+                    <Text style={styles.tagText}>Geral da Série</Text>
+                </View>
+            )}
+        </View>
       </View>
       
-      {/* Ação: Ver PDF ou Editar Plano */}
       <TouchableOpacity onPress={() => {
           if(item.url) {
               navigation.navigate('ViewPDF', { url: item.url });
           } else {
-              navigation.navigate('EditorPlanoAula', { plan: item, isContent: true });
+              navigation.navigate('EditorPlanoAula', { plan: item });
           }
       }}>
         <MaterialCommunityIcons 
@@ -103,7 +136,9 @@ export default function ProfessorDetalheTurma({ route }) {
         </View>
         <View style={styles.infoRow}>
           <MaterialCommunityIcons name="school-outline" size={20} color="#1154D9" />
-          <Text style={styles.infoText}>{turma.gradeLevel}</Text>
+          <Text style={styles.infoText}>
+            {turma.gradeLevel} {turma.schoolYear ? `• ${turma.schoolYear}` : ''}
+          </Text>
         </View>
       </View>
 
@@ -131,7 +166,6 @@ export default function ProfessorDetalheTurma({ route }) {
               <FlatList
                 data={alunos}
                 keyExtractor={item => item.id}
-                contentContainerStyle={{paddingVertical: 15}}
                 ListEmptyComponent={<Text style={styles.emptyText}>Nenhum aluno nesta turma.</Text>}
                 renderItem={({ item }) => (
                   <View style={styles.cardAluno}>
@@ -148,17 +182,20 @@ export default function ProfessorDetalheTurma({ route }) {
                 <FlatList
                   data={conteudosTurma}
                   keyExtractor={item => item.id}
-                  contentContainerStyle={{paddingVertical: 15}}
-                  ListEmptyComponent={<Text style={styles.emptyText}>Nenhum conteúdo postado.</Text>}
+                  ListEmptyComponent={<Text style={styles.emptyText}>Nenhum conteúdo encontrado para esta turma ou série.</Text>}
                   renderItem={renderContentItem}
                 />
-                
-                {/* 🛑 BOTÃO FLUTUANTE DE ADIÇÃO (REMOVIDO) 🛑 */}
+                {/* BOTÃO FAB (+) REMOVIDO AQUI */}
               </View>
             )}
           </>
         )}
       </View>
+
+      {/* Modais mantidos no código mas inativos visualmente sem o botão */}
+      <Modal visible={modalVisible} transparent={true} animationType="fade" onRequestClose={() => setModalVisible(false)}>
+         {/* ... conteúdo do modal ... */}
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -184,6 +221,13 @@ const styles = StyleSheet.create({
   iconBox: { marginRight: 15 },
   contentName: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   contentType: { fontSize: 12, color: '#888' },
+  
+  // TAG GERAL
+  tagGeneral: { backgroundColor: '#E3F2FD', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 8 },
+  tagText: { color: '#1154D9', fontSize: 10, fontWeight: 'bold' },
+
+  // FAB removido da view, mas estilo mantido caso precise voltar
+  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#1154D9', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 3 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   menuContainer: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
   menuTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, color: '#333' },
