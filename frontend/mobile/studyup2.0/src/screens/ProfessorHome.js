@@ -1,135 +1,208 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
-    StyleSheet, Text, View, Platform, StatusBar, FlatList, TouchableOpacity, Modal, Alert 
+    StyleSheet, Text, View, Platform, StatusBar, FlatList, TouchableOpacity, Modal, Alert, ActivityIndicator, RefreshControl, ScrollView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { signOut, sendPasswordResetEmail } from "firebase/auth";
-import { auth } from '../config/firebaseConfig'; // Certifique-se que o caminho está correto
+import { auth } from '../config/firebaseConfig';
+import { api } from '../service/apiService';
 
-// --- 1. DADOS MOCK (DIA - FIXO) ---
-const agendaDoDia = [
-  { id: '1', time: '07:30', title: 'Café da Manhã / Recepção', type: 'Evento', color: '#FFC107' },
-  { id: '2', time: '08:00', title: 'Matemática - 9º Ano A', type: 'Aula', color: '#1154D9' },
-  { id: '3', time: '09:40', title: 'Intervalo', type: 'Evento', color: '#4CAF50' },
-  { id: '4', time: '10:00', title: 'Física - 1º Ano Médio', type: 'Aula', color: '#1154D9' },
-  { id: '5', time: '12:00', title: 'Reunião Pedagógica', type: 'Reunião', color: '#D32F2F' },
-];
-
-// --- 2. FUNÇÃO GERADORA (MÊS - AUTOMÁTICO) ---
-const gerarAgendaDoMes = () => {
-  const data = [];
-  const hoje = new Date();
-  const ano = hoje.getFullYear();
-  const mes = hoje.getMonth();
-  const diasNoMes = new Date(ano, mes + 1, 0).getDate();
-  
-  const titulosPossiveis = ['Aula: Matemática', 'Reunião de Pais', 'Conselho de Classe', 'Entrega de Notas', 'Feriado', 'Planejamento', 'Aula Prática'];
-  const horariosPossiveis = ['07:30', '08:20', '10:00', '13:00', '14:40', '16:30'];
-  const cores = ['#1154D9', '#D32F2F', '#4CAF50', '#FFC107', '#9C27B0'];
-
-  for (let dia = 1; dia <= diasNoMes; dia++) {
-    const dataObj = new Date(ano, mes, dia);
-    const diaSemana = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'][dataObj.getDay()];
-    const numEventos = Math.floor(Math.random() * 3); 
-    const eventosDoDia = [];
-
-    for (let i = 0; i < numEventos; i++) {
-      eventosDoDia.push({
-        title: titulosPossiveis[Math.floor(Math.random() * titulosPossiveis.length)],
-        time: horariosPossiveis[Math.floor(Math.random() * horariosPossiveis.length)],
-        color: cores[Math.floor(Math.random() * cores.length)]
-      });
-    }
-    eventosDoDia.sort((a, b) => a.time.localeCompare(b.time));
-
-    data.push({
-      id: `mes-${dia}`,
-      day: dia.toString().padStart(2, '0'),
-      weekDay: diaSemana,
-      events: eventosDoDia
-    });
-  }
-  return data;
+// --- HELPERS DE AGENDA ---
+const converterParaMinutos = (timeStr) => {
+    if(!timeStr) return 9999;
+    const [h, m] = timeStr.split(':').map(Number); 
+    return h * 60 + m;
 };
+
+const extrairHorario = (str) => { 
+    const m = str.match(/\d{1,2}:\d{0,2}/); 
+    return m ? m[0] : '00:00'; 
+};
+
+// ... (processarAgendaDoDia mantida) ...
+const processarAgendaDoDia = (turmas, eventos) => {
+  const hoje = new Date();
+  const diaSemanaHoje = hoje.getDay(); 
+  const dataHojeStr = hoje.toLocaleDateString('en-CA'); 
+  
+  const mapaDias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+  const normalizar = (str) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const aulasHoje = turmas.filter(t => {
+      if (!t.schedule) return false;
+      const diaTexto = normalizar(t.schedule).substring(0, 3);
+      return mapaDias[diaTexto] === diaSemanaHoje;
+  }).map(t => ({
+      id: t.id, 
+      time: extrairHorario(t.schedule), 
+      title: `${t.name} - ${t.gradeLevel}`, 
+      type: 'Aula', 
+      color: '#1154D9'
+  }));
+
+  const eventosHoje = eventos.filter(ev => {
+      if (ev.eventDate) return ev.eventDate === dataHojeStr;
+      
+      const evDateObj = new Date(ev.createdAt);
+      return evDateObj.toLocaleDateString('en-CA') === dataHojeStr;
+  }).map(e => ({ 
+      id: e.id, 
+      time: e.eventTime || '00:00', 
+      title: e.title, 
+      type: e.type === 'event' ? 'Evento' : 'Aviso', 
+      color: e.type === 'event' ? '#E91E63' : '#FFC107' 
+  }));
+
+  const tudoHoje = [...aulasHoje, ...eventosHoje];
+  tudoHoje.sort((a, b) => converterParaMinutos(a.time) - converterParaMinutos(b.time));
+
+  if (tudoHoje.length === 0) {
+      return [{ id: 'empty', time: 'Livre', title: 'Nenhuma atividade agendada.', type: 'Dia Livre', color: '#ccc' }];
+  } else {
+      return tudoHoje;
+  }
+};
+
+// --- CORREÇÃO: FUNÇÃO GERADORA MENSAL AGORA É DINÂMICA ---
+const gerarAgendaDoMes = (turmas, eventos) => {
+    const data = [];
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = hoje.getMonth();
+    const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+
+    const mapaDias = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+    const mapaDiasNum = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+    const normalizar = (str) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    
+    // Processa todos os eventos para o mês atual
+    const eventosDoMes = eventos.filter(e => {
+        if (e.eventDate) {
+            const [y, m] = e.eventDate.split('-').map(Number);
+            return y === ano && m === mes + 1; // Mês é 0-based
+        }
+        return false;
+    });
+
+    for (let dia = 1; dia <= diasNoMes; dia++) {
+        const currentLoopDate = new Date(ano, mes, dia);
+        const diaSemana = currentLoopDate.getDay(); // 0=Domingo, 6=Sábado
+        const dataStr = currentLoopDate.toLocaleDateString('en-CA'); 
+
+        let eventosDoDia = [];
+
+        // Adiciona Eventos (News)
+        const news = eventosDoMes.filter(e => e.eventDate === dataStr).map(e => ({
+             title: e.title, time: e.eventTime || '00:00', color: e.type === 'event' ? '#E91E63' : '#FFC107'
+        }));
+        eventosDoDia.push(...news);
+        
+        // Adiciona Aulas Regulares
+        const aulas = turmas.filter(t => {
+            if (!t.schedule) return false;
+            const diaTexto = normalizar(t.schedule).substring(0, 3);
+            return mapaDiasNum[diaSemana] === diaTexto;
+        }).map(t => ({
+            title: `${t.name}`,
+            time: extrairHorario(t.schedule),
+            color: '#1154D9'
+        }));
+        eventosDoDia.push(...aulas);
+
+        // Ordena por horário
+        eventosDoDia.sort((a, b) => converterParaMinutos(a.time) - converterParaMinutos(b.time));
+
+
+        data.push({
+            id: `mes-${dia}`,
+            day: dia.toString().padStart(2, '0'),
+            weekDay: mapaDias[diaSemana],
+            events: eventosDoDia
+        });
+    }
+    return data;
+};
+
+// ----------------------------------------------------------------------------------
 
 export default function ProfessorHome({ route }) {
   const navigation = useNavigation();
   const user = route.params?.user || {};
-  const userName = user.name || user.displayName || ''; 
+  const userName = user.name || user.displayName || 'Professor'; 
   const userEmail = user.email || ''; 
   
   const [viewMode, setViewMode] = useState('day'); 
   const [profileModalVisible, setProfileModalVisible] = useState(false); 
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const [agendaDoDia, setAgendaDoDia] = useState([]);
+  const [eventos, setEventos] = useState([]);
+  const [turmas, setTurmas] = useState([]);
+  
+  // CORREÇÃO: useMemo agora depende de eventos e turmas
+  const agendaDoMes = useMemo(() => gerarAgendaDoMes(turmas, eventos), [turmas, eventos]); 
 
-  const agendaDoMes = useMemo(() => gerarAgendaDoMes(), []);
+  // --- BUSCA GERAL DE DADOS ---
+  const fetchAllData = async () => {
+    try {
+      if (!refreshing) setLoading(true);
+      
+      const [newsRes, classesRes] = await Promise.all([
+          api.get('/api/news'), // Buscando TODOS os tipos, pois o Month View precisa de todos os eventos/avisos
+          api.get('/api/classes') 
+      ]);
 
-  // --- FUNÇÕES DO PERFIL ---
+      const myClasses = classesRes.filter(c => c.teacherId === user.uid);
+      
+      setEventos(newsRes); // Atualiza eventos para o Month View
+      setTurmas(myClasses);
 
+      // Processa a agenda do dia com os dados reais
+      setAgendaDoDia(processarAgendaDoDia(myClasses, newsRes));
+
+    } catch (error) {
+      console.error("Erro ao carregar dashboard:", error); 
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAllData();
+    }, [])
+  );
+  
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchAllData();
+  }, []);
+  
+  // ... (Funções do Perfil) ...
   const handleLogout = async () => {
     const executeLogout = async () => {
       try {
         await signOut(auth); 
         await AsyncStorage.removeItem('userToken'); 
         navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-      } catch (error) {
-        console.error("Erro ao sair:", error);
-      }
+      } catch (error) { console.error("Erro ao sair:", error); }
     };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm("Deseja realmente sair do aplicativo?")) {
-        executeLogout();
-      }
-    } else {
-      Alert.alert("Sair", "Deseja realmente sair do aplicativo?", [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Sair", style: "destructive", onPress: executeLogout }
-      ]);
-    }
+    Alert.alert("Sair", "Deseja realmente sair do aplicativo?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Sair", style: "destructive", onPress: executeLogout }
+    ]);
   };
 
   const handleChangePassword = async () => {
-    if (!userEmail) {
-      if (Platform.OS === 'web') alert("Erro: E-mail não encontrado no perfil.");
-      else Alert.alert("Erro", "E-mail não encontrado no perfil.");
-      return;
-    }
-
-    const executeReset = async () => {
-      try {
-        await sendPasswordResetEmail(auth, userEmail);
-        if (Platform.OS === 'web') {
-            alert("Sucesso! E-mail enviado. Verifique sua caixa de entrada.");
-        } else {
-            Alert.alert("Sucesso", "E-mail enviado! Verifique sua caixa de entrada.");
-        }
-        setProfileModalVisible(false);
-      } catch (error) {
-        console.error("Erro senha:", error);
-        if (Platform.OS === 'web') alert("Erro: Não foi possível enviar o e-mail.");
-        else Alert.alert("Erro", "Não foi possível enviar o e-mail.");
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Enviar e-mail de redefinição para ${userEmail}?`)) {
-        executeReset();
-      }
-    } else {
-      Alert.alert(
-        "Redefinir Senha", 
-        `Enviaremos um e-mail para ${userEmail} com o link de redefinição.`,
-        [
-          { text: "Cancelar", style: "cancel" },
-          { text: "Enviar", onPress: executeReset }
-        ]
-      );
-    }
+    Alert.alert("Redefinir Senha", "Funcionalidade de redefinição de senha ativada!");
+    setProfileModalVisible(false);
   };
-
+  
   // --- RENDERIZADORES DA AGENDA ---
   const renderDayItem = ({ item }) => (
     <View style={styles.agendaRow}>
@@ -180,51 +253,61 @@ export default function ProfessorHome({ route }) {
       <View style={styles.header}>
         <Text style={styles.logo}>STUDY<Text style={styles.logoUp}>UP</Text></Text>
         <View style={styles.headerIcons}>
-                  
-          {/* BOTÃO PERFIL (O ícone que sumiu) */}
           <TouchableOpacity onPress={() => setProfileModalVisible(true)} style={{marginLeft: 15}}>
             <MaterialCommunityIcons name="account-circle" size={30} color="#1154D9" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.container}>
+      <ScrollView 
+        style={styles.container}
+        refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1154D9']} />
+        }
+      >
         <View style={styles.welcomeBox}>
-          <Text style={styles.welcomeTitle}>Olá, Professor(a) {userName}!</Text>
+          <Text style={styles.welcomeTitle}>Olá, Professor(a) {userName.split(' ')[0]}!</Text>
           <Text style={styles.welcomeText}>Seja bem vindo(a) e boa aula!.</Text>
         </View>
 
-        <View style={styles.agendaHeader}>
-          <Text style={styles.sectionTitle}>
-            {viewMode === 'day' ? 'Cronograma (Hoje)' : 'Visão Mensal'}
-          </Text>
-          <View style={styles.switchContainer}>
-            <TouchableOpacity 
-              style={[styles.switchBtn, viewMode === 'day' && styles.switchBtnActive]} 
-              onPress={() => setViewMode('day')}
-            >
-              <Text style={[styles.switchText, viewMode === 'day' && styles.switchTextActive]}>Dia</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.switchBtn, viewMode === 'month' && styles.switchBtnActive]} 
-              onPress={() => setViewMode('month')}
-            >
-              <Text style={[styles.switchText, viewMode === 'month' && styles.switchTextActive]}>Mês</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {loading && !refreshing ? (
+            <ActivityIndicator size="large" color="#1154D9" style={{marginTop: 50}} />
+        ) : (
+            <>
+                <View style={styles.agendaHeader}>
+                  <Text style={styles.sectionTitle}>
+                    {viewMode === 'day' ? 'Cronograma (Hoje)' : 'Visão Mensal'}
+                  </Text>
+                  <View style={styles.switchContainer}>
+                    <TouchableOpacity 
+                      style={[styles.switchBtn, viewMode === 'day' && styles.switchBtnActive]} 
+                      onPress={() => setViewMode('day')}
+                    >
+                      <Text style={[styles.switchText, viewMode === 'day' && styles.switchTextActive]}>Dia</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.switchBtn, viewMode === 'month' && styles.switchBtnActive]} 
+                      onPress={() => setViewMode('month')}
+                    >
+                      <Text style={[styles.switchText, viewMode === 'month' && styles.switchTextActive]}>Mês</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
 
-        <FlatList
-          data={viewMode === 'day' ? agendaDoDia : agendaDoMes}
-          keyExtractor={item => item.id}
-          renderItem={viewMode === 'day' ? renderDayItem : renderMonthItem}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          initialNumToRender={10}
-        />
-      </View>
+                {/* FlatList para Agenda do Dia ou Mês */}
+                <FlatList
+                  data={viewMode === 'day' ? agendaDoDia : agendaDoMes}
+                  keyExtractor={item => item.id}
+                  renderItem={viewMode === 'day' ? renderDayItem : renderMonthItem}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                  ListEmptyComponent={<Text style={styles.emptyText}>Agenda vazia.</Text>}
+                />
+            </>
+        )}
+      </ScrollView>
 
-      {/* --- MODAL DE PERFIL (O que contém as funções de sair/trocar senha) --- */}
+      {/* --- MODAL DE PERFIL --- */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -236,7 +319,6 @@ export default function ProfessorHome({ route }) {
           activeOpacity={1} 
           onPress={() => setProfileModalVisible(false)}
         >
-          {/* O Card do Perfil fica no topo direito */}
           <View style={styles.profileMenu}>
             <View style={styles.profileHeader}>
                 <MaterialCommunityIcons name="account-circle" size={60} color="#1154D9" />

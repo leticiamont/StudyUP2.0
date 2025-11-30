@@ -67,7 +67,8 @@ export default function EditorPlanoAula({ route }) {
             name: title,
             content: contentHtml,
             type: 'text', 
-            gradeLevel: plan.gradeLevel 
+            gradeLevel: plan.gradeLevel,
+            schoolYear: plan.schoolYear // <--- CORRETO: OBRIGATÓRIO PARA O FILTRO
         };
 
         if (plan.id) {
@@ -78,21 +79,22 @@ export default function EditorPlanoAula({ route }) {
         
       } else {
         console.log("Salvando como PLANO...");
-        
+
         const payload = {
             name: title,
             gradeLevel: plan.gradeLevel || 'Geral',
+            schoolYear: plan.schoolYear, // <--- ADICIONADO AQUI TAMBÉM (IMPORTANTE)
             modules: [{
                 title: 'Conteúdo Principal',
                 topics: [{ title: 'Texto da Aula', description: contentHtml }]
             }]
         };
         
-        if (plan.id) {
-            await api.put(`/api/plans/${plan.id}`, payload);
-        } else {
-            await api.post('/api/plans', payload);
-        }
+         if (plan.id) { 
+             await api.put(`/api/plans/${plan.id}`, payload); 
+         } else { 
+             await api.post('/api/plans', payload); 
+         }
       }
       
       Alert.alert('Sucesso!', 'Salvo com sucesso.');

@@ -16,64 +16,42 @@ const CONTENT_COLLECTION = 'contents';
 
 export const uploadContent = async (req, res) => {
   try {
-    let publicUrl = null;
-    let publicId = null;
-    
-    // Detecta o tipo: Se veio arquivo, usa o tipo dele. Se não, vê se veio no corpo ou assume 'text'.
-    let type = req.body.type || (req.file ? req.file.mimetype : 'text'); 
-
-    // Validação: Só dá erro se não tiver nem arquivo NEM conteúdo de texto
-    if (!req.file && !req.body.content && type !== 'text') {
-      return res.status(400).json({ error: 'Nenhum arquivo ou texto enviado.' });
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum ficheiro enviado.' });
     }
     
-    // 1. Upload do Arquivo (Se houver)
-    if (req.file) {
-      console.log('Iniciando upload para o Cloudinary...');
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        resource_type: 'auto',
-        folder: 'studyup_uploads',
-        use_filename: true,
-        unique_filename: false,
-        access_mode: 'public' 
-      });
-      
-      publicUrl = uploadResult.secure_url;
-      
-      // Garante extensão .pdf na URL para visualizadores funcionarem melhor
-      if (publicUrl && req.file.mimetype === 'application/pdf' && !publicUrl.endsWith('.pdf')) {
-          publicUrl = publicUrl + '.pdf';
-      }
-      
-      publicId = uploadResult.public_id;
-      
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-    }
+    const file = req.file;
+    console.log('Iniciando upload para o Cloudinary...');
 
-    // 2. Identifica o Autor (Usa 'anonym' se o token falhar, para Desktop Admin)
-    const authorId = req.user?.uid || 'admin_desktop';
+    // Envia o arquivo local para o Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(file.path, {
+      resource_type: 'auto',
+      folder: 'studyup_uploads',
+      use_filename: true,
+      unique_filename: false,
+    });
 
-    // 3. Monta o Objeto (MESCLADO: Inclui schoolYear)
+    const publicUrl = uploadResult.secure_url;
+
+    // Salva os dados no Firestore
     const contentData = {
-      name: req.body.name || "Sem título",
-      type: type,
-      url: publicUrl || req.body.url || null, 
-      public_id: publicId || null,
-      content: req.body.content || null, // Texto da IA
-      
-      gradeLevel: req.body.gradeLevel || null, 
-      schoolYear: req.body.schoolYear || null, // <-- LINHA RECUPERADA DO CÓDIGO 1
-      
-      teacherId: authorId, 
-      classId: (req.body.classId && req.body.classId !== 'null') ? req.body.classId : null, 
+      name: file.originalname,
+      type: file.mimetype,
+      url: publicUrl,
       planId: req.body.planId || null,
+      classId: req.body.classId || null, 
+      authorId: req.user?.uid || 'anonym', 
       createdAt: new Date().toISOString(),
     };
     
-    // 4. Salva no Banco
     const docRef = await db.collection(CONTENT_COLLECTION).add(contentData);
-    
-    console.log(`Conteúdo salvo! ID: ${docRef.id} | Tipo: ${type}`);
+
+    // Limpeza do arquivo local (pasta uploads do PC)
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+
+    console.log('Sucesso! Arquivo disponível em:', publicUrl);
     res.status(201).json({ id: docRef.id, ...contentData });
 
   } catch (error) {
