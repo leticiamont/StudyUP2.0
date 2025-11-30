@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { 
     StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, StatusBar,
     Modal, TextInput, Alert, ActivityIndicator, FlatList
@@ -10,40 +10,40 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// 1. MAPEAMENTO E ORDEM (Usado apenas para ordenação visual agora)
-const SERIES_MAP = {
-    "Ensino Médio": ["1ª Série", "2ª Série", "3ª Série"],
-    "Médio": ["1ª Série", "2ª Série", "3ª Série"],
-    "Ensino Fundamental 2": ["6º Ano", "7º Ano", "8º Ano", "9º Ano"],
-    "Fundamental 2": ["6º Ano", "7º Ano", "8º Ano", "9º Ano"],
-    "Ensino Fundamental 1": ["1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano"],
-    "Fundamental 1": ["1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano"]
-};
-
-const GRADE_ORDER = [
+// MAPEAMENTO VISUAL (Para ordenar os cards grandes)
+const MACRO_ORDER = [
     "Ensino Fundamental 1", "Fundamental 1",
     "Ensino Fundamental 2", "Fundamental 2",
     "Ensino Médio", "Médio"
+];
+
+// MAPEAMENTO DE SÉRIES (Para ordenar o dropdown interno)
+const SERIES_ORDER = [
+    "1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano",
+    "6º Ano", "7º Ano", "8º Ano", "9º Ano",
+    "1ª Série", "2ª Série", "3ª Série"
 ];
 
 export default function ProfessorConteudo({ route }) {
   const { user } = route.params;
   const navigation = useNavigation();
 
-  const [viewMode, setViewMode] = useState('years');
-  const [selectedGrade, setSelectedGrade] = useState(null);
-  const [yearsList, setYearsList] = useState([]);
+  const [viewMode, setViewMode] = useState('years'); // 'years' (Cards) ou 'details' (Lista)
+  const [selectedMacroGrade, setSelectedMacroGrade] = useState(null); // Ex: "Ensino Médio"
   
-  // NOVO: Guarda as turmas da professora para filtrar as séries depois
+  // Lista de Cards Grandes (Níveis)
+  const [levelCards, setLevelCards] = useState([]);
+  
+  // Guarda todas as turmas para filtrar depois
   const [myClassesState, setMyClassesState] = useState([]);
+
+  // Dentro do Nível: Séries disponíveis (Ex: 1ª e 2ª Série)
+  const [availableSeries, setAvailableSeries] = useState([]);
+  const [activeSeriesYear, setActiveSeriesYear] = useState(null); // Ex: "3ª Série"
 
   const [allPlansList, setAllPlansList] = useState([]); 
   const [allContents, setAllContents] = useState([]); 
-  const [availableSeries, setAvailableSeries] = useState([]); 
-  const [activeSeriesYear, setActiveSeriesYear] = useState(null); 
   const [loading, setLoading] = useState(false);
-
-  // ESTADO DO DROPDOWN
   const [dropdownVisible, setDropdownVisible] = useState(false);
 
   // Estados IA
@@ -52,103 +52,99 @@ export default function ProfessorConteudo({ route }) {
   const [iaResponse, setIaResponse] = useState(''); 
   const [isIaLoading, setIsIaLoading] = useState(false);
 
-  // --- FUNÇÕES DE DADOS ---
-  const fetchYears = async () => {
+  // --- 1. BUSCA TURMAS E GERA OS CARDS DE NÍVEL ---
+  const fetchClasses = async () => {
     setLoading(true);
     try {
       const classes = await api.get('/api/classes');
       
-      // Filtra apenas as turmas DESTE professor
+      // Filtra apenas minhas turmas
       const myClasses = classes.filter(c => c.teacherId === user.uid);
-      setMyClassesState(myClasses); // <--- Salvamos para usar depois no dropdown
+      setMyClassesState(myClasses);
 
-      // Agrupa os Níveis (Cards Grandes)
-      const uniqueGrades = [...new Set(myClasses.map(c => c.gradeLevel))];
+      // Agrupa por NÍVEL (gradeLevel) para fazer os cards (Fundamental, Médio...)
+      const uniqueLevels = [...new Set(myClasses.map(c => c.gradeLevel || c.educationLevel))].filter(Boolean);
       
-      const sortedGrades = uniqueGrades.sort((a, b) => {
-          let indexA = GRADE_ORDER.indexOf(a);
-          let indexB = GRADE_ORDER.indexOf(b);
+      const sortedLevels = uniqueLevels.sort((a, b) => {
+          let indexA = MACRO_ORDER.indexOf(a);
+          let indexB = MACRO_ORDER.indexOf(b);
           if (indexA === -1) indexA = 999;
           if (indexB === -1) indexB = 999;
           return indexA - indexB;
       });
-      setYearsList(sortedGrades);
+      
+      setLevelCards(sortedLevels);
     } catch (error) { console.log(error); } 
     finally { setLoading(false); }
   };
 
-  const loadContentsAndSeries = async (grade) => {
-    setSelectedGrade(grade);
-    setLoading(true);
-    try {
-      const plansResponse = await api.get(`/api/plans?gradeLevel=${encodeURIComponent(grade)}`);
-      setAllPlansList(Array.isArray(plansResponse) ? plansResponse : []);
-
-      const contents = await api.get(`/api/contents?gradeLevel=${encodeURIComponent(grade)}`);
-      setAllContents(Array.isArray(contents) ? contents : []);
+  // --- 2. AO CLICAR NO CARD, CONFIGURA AS SÉRIES ESPECÍFICAS ---
+  const handlePressLevel = (macroGrade) => {
+      setSelectedMacroGrade(macroGrade);
       
-      // --- LÓGICA CORRIGIDA DO FILTRO DE SÉRIES ---
-      // 1. Pega todas as turmas que a professora tem nesse Nível (ex: Médio)
-      const classesInThisGrade = myClassesState.filter(c => c.gradeLevel === grade);
-      
-      // 2. Extrai as séries específicas (ex: "3ª Série") dessas turmas
-      // Usa Set para não repetir se ela tiver "3ª A" e "3ª B"
-      const realSeries = [...new Set(classesInThisGrade.map(c => c.schoolYear))].filter(Boolean);
+      // Filtra quais séries (schoolYear) eu tenho dentro desse nível
+      const classesInThisLevel = myClassesState.filter(c => 
+          c.gradeLevel === macroGrade || c.educationLevel === macroGrade
+      );
 
-      // 3. Ordena visualmente (1º, 2º, 3º...) usando o mapa padrão
-      const orderMap = SERIES_MAP[grade] || [];
-      const sortedSeries = realSeries.sort((a, b) => {
-          return orderMap.indexOf(a) - orderMap.indexOf(b);
-      });
-
-      setAvailableSeries(sortedSeries);
+      const realSeries = [...new Set(classesInThisLevel.map(c => c.schoolYear))].filter(Boolean);
       
-      // 4. Seleciona automaticamente a primeira série disponível
-      if (sortedSeries.length > 0) {
-          if (!activeSeriesYear || !sortedSeries.includes(activeSeriesYear)) {
-             setActiveSeriesYear(sortedSeries[0]);
-          }
+      // Ordena (1º, 2º... 9º)
+      realSeries.sort((a, b) => SERIES_ORDER.indexOf(a) - SERIES_ORDER.indexOf(b));
+
+      setAvailableSeries(realSeries);
+
+      // Seleciona a primeira série automaticamente e carrega conteúdo
+      if (realSeries.length > 0) {
+          setActiveSeriesYear(realSeries[0]);
       } else {
           setActiveSeriesYear(null);
       }
-
-    } catch (error) { Alert.alert("Erro", "Falha ao carregar materiais."); } 
-    finally { setLoading(false); }
+      
+      setViewMode('details');
   };
 
-  const openGradeDetails = (grade) => {
-    setViewMode('details');
-    // Reseta a série ao entrar, para que a lógica acima selecione a primeira válida
-    setActiveSeriesYear(null); 
-    loadContentsAndSeries(grade);
+  // --- 3. CARREGA CONTEÚDO DA SÉRIE ATIVA ---
+  const fetchContentForActiveSeries = async () => {
+      if (!activeSeriesYear) return;
+      
+      setLoading(true);
+      try {
+          // Busca pelo schoolYear (ex: "9º Ano")
+          const plansResponse = await api.get(`/api/plans?schoolYear=${encodeURIComponent(activeSeriesYear)}`);
+          setAllPlansList(Array.isArray(plansResponse) ? plansResponse : []);
+
+          const contents = await api.get(`/api/contents?schoolYear=${encodeURIComponent(activeSeriesYear)}`);
+          setAllContents(Array.isArray(contents) ? contents : []);
+      } catch (e) {
+          console.log(e);
+      } finally {
+          setLoading(false);
+      }
   };
 
-  const activePlan = useMemo(() => {
-      if (!activeSeriesYear || allPlansList.length === 0) return null;
-      const match = allPlansList.find(p => p.schoolYear === activeSeriesYear);
-      if (!match) return allPlansList.find(p => p.name && p.name.includes(activeSeriesYear));
-      return match;
-  }, [allPlansList, activeSeriesYear]);
-
-  const filteredContents = useMemo(() => {
-      if (!activeSeriesYear) return allContents;
-      return allContents.filter(item => item.schoolYear === activeSeriesYear);
-  }, [allContents, activeSeriesYear]);
+  // Monitora mudança na série ativa (Dropdown) para recarregar conteúdo
+  useEffect(() => {
+      if (viewMode === 'details' && activeSeriesYear) {
+          fetchContentForActiveSeries();
+      }
+  }, [activeSeriesYear, viewMode]);
 
   useFocusEffect(
     useCallback(() => {
-      if (viewMode === 'years') fetchYears();
-      else if (selectedGrade) loadContentsAndSeries(selectedGrade);
+      if (viewMode === 'years') fetchClasses();
     }, [viewMode])
   );
+
+  const activePlan = useMemo(() => allPlansList[0], [allPlansList]);
 
   // --- AÇÕES ---
   
   const handleEdit = () => {
-     if (!activeSeriesYear) return Alert.alert("Atenção", "Selecione uma Série primeiro.");
+     if (!activeSeriesYear) return Alert.alert("Atenção", "Nenhuma série selecionada.");
      navigation.navigate('EditorPlanoAula', { 
          isContent: true, 
-         plan: { name: '', gradeLevel: selectedGrade, schoolYear: activeSeriesYear, content: '' } 
+         plan: { name: '', gradeLevel: selectedMacroGrade, schoolYear: activeSeriesYear, content: '' } 
      });
   };
 
@@ -161,7 +157,7 @@ export default function ProfessorConteudo({ route }) {
   };
 
   const handleUpload = async () => {
-      if (!activeSeriesYear) return Alert.alert("Atenção", "Selecione uma Série antes de enviar arquivos.");
+      if (!activeSeriesYear) return Alert.alert("Erro", "Selecione uma série específica no topo.");
 
       try {
         const docResult = await DocumentPicker.getDocumentAsync({ type: ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"] });
@@ -171,37 +167,54 @@ export default function ProfessorConteudo({ route }) {
           if (Platform.OS === 'web') { formData.append('file', file.file, file.name); } 
           else { formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType }); }
           
-          formData.append('gradeLevel', selectedGrade); 
           formData.append('schoolYear', activeSeriesYear); 
+          formData.append('gradeLevel', selectedMacroGrade); 
           formData.append('name', file.name);
 
           Alert.alert('Enviando...', 'Carregando arquivo...');
           const token = await AsyncStorage.getItem('userToken');
           
-          // ATENÇÃO: Verifique se este IP está correto para o seu ambiente
+          // ATENÇÃO: Verifique se o IP está correto
           const response = await fetch('http://192.168.0.90:3000/api/contents/upload', {
             method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData,
           });
           
           if (!response.ok) throw new Error('Falha');
           Alert.alert('Sucesso!', 'Arquivo enviado.');
-          loadContentsAndSeries(selectedGrade);
+          fetchContentForActiveSeries();
         }
       } catch (error) { Alert.alert('Erro', 'Falha ao enviar arquivo.'); }
   };
 
   const deleteContent = async (id) => {
-      Alert.alert("Apagar", "Tem certeza?", [
-          { text: "Cancelar", style: "cancel" },
-          { text: "Apagar", style: "destructive", onPress: async () => {
-              try { await api.delete(`/api/contents/${id}`); loadContentsAndSeries(selectedGrade); } 
-              catch (error) { Alert.alert("Erro", "Não foi possível apagar."); }
-          }}
-      ]);
+      // VERIFICAÇÃO PARA WEB (COMPUTADOR)
+      if (Platform.OS === 'web') {
+          if (window.confirm("Tem certeza que deseja apagar este item?")) {
+              try { 
+                  await api.delete(`/api/contents/${id}`); 
+                  fetchContentForActiveSeries(); 
+              } catch (error) { 
+                  alert("Erro ao apagar: " + error.message); 
+              }
+          }
+      } 
+      // VERIFICAÇÃO PARA MOBILE (CELULAR)
+      else {
+          Alert.alert("Apagar", "Tem certeza?", [
+              { text: "Cancelar", style: "cancel" },
+              { text: "Apagar", style: "destructive", onPress: async () => {
+                  try { 
+                      await api.delete(`/api/contents/${id}`); 
+                      fetchContentForActiveSeries(); 
+                  } catch (error) { 
+                      Alert.alert("Erro", "Não foi possível apagar."); 
+                  }
+              }}
+          ]);
+      }
   }
   
   const openIAModal = () => {
-      if (!activeSeriesYear) return Alert.alert("Atenção", "Selecione uma Série para a IA criar o conteúdo.");
       setIaPrompt('');
       setIaResponse('');
       setIaModalVisible(true);
@@ -219,25 +232,21 @@ export default function ProfessorConteudo({ route }) {
   };
 
   const saveIaContent = async () => {
-      if (!activeSeriesYear) return Alert.alert("Erro", "Série não selecionada.");
-      
       try {
           await api.post('/api/contents', { 
               name: `IA: ${iaPrompt.substring(0,15)}...`,
               content: iaResponse,
               type: 'text',
-              gradeLevel: selectedGrade,
-              schoolYear: activeSeriesYear 
+              schoolYear: activeSeriesYear,
+              gradeLevel: selectedMacroGrade
           });
           setIaModalVisible(false);
-          setIaPrompt('');
-          setIaResponse('');
-          loadContentsAndSeries(selectedGrade);
+          fetchContentForActiveSeries();
       } catch (e) { Alert.alert('Erro ao salvar'); }
   };
 
   const renderYearCard = ({ item }) => (
-    <TouchableOpacity style={styles.yearCard} onPress={() => openGradeDetails(item)}>
+    <TouchableOpacity style={styles.yearCard} onPress={() => handlePressLevel(item)}>
         <View style={styles.yearIcon}><MaterialCommunityIcons name="school" size={32} color="#fff" /></View>
         <View>
             <Text style={styles.yearTitle}>{item}</Text>
@@ -257,15 +266,16 @@ export default function ProfessorConteudo({ route }) {
                 <MaterialCommunityIcons name="arrow-left" size={24} color="#333" />
             </TouchableOpacity>
         ) : <View />}
-        <Text style={styles.headerTitle}>{viewMode === 'years' ? 'Meus Anos Letivos' : selectedGrade}</Text>
+        <Text style={styles.headerTitle}>{viewMode === 'years' ? 'Meus Níveis de Ensino' : selectedMacroGrade}</Text>
         <View style={{width: 24}} />
       </View>
 
+      {/* VISTA 1: CARDS DE NÍVEL */}
       {viewMode === 'years' && (
           <View style={styles.container}>
               {loading ? <ActivityIndicator color="#1154D9" /> : (
                   <FlatList 
-                    data={yearsList}
+                    data={levelCards}
                     keyExtractor={item => item}
                     renderItem={renderYearCard}
                     ListEmptyComponent={<Text style={styles.emptyText}>Nenhuma turma encontrada.</Text>}
@@ -275,34 +285,32 @@ export default function ProfessorConteudo({ route }) {
           </View>
       )}
 
+      {/* VISTA 2: DETALHES COM DROPDOWN */}
       {viewMode === 'details' && (
           <View style={styles.container}>
              <ScrollView contentContainerStyle={{padding: 20}}>
                 
-                {/* DROPDOWN AZUL (AGORA FILTRADO PELAS TURMAS REAIS) */}
                 {availableSeries.length > 0 ? (
                     <>
-                        <Text style={styles.filterLabel}>Filtrar Série:</Text>
+                        <Text style={styles.filterLabel}>Selecionar Série:</Text>
                         <TouchableOpacity 
                             style={styles.dropdownButton} 
                             onPress={() => setDropdownVisible(true)}
                         >
-                            <Text style={styles.dropdownText}>{activeSeriesYear || "Selecione a Série"}</Text>
+                            <Text style={styles.dropdownText}>{activeSeriesYear || "Selecione..."}</Text>
                             <MaterialCommunityIcons name="chevron-down" size={24} color="#FFF" />
                         </TouchableOpacity>
                     </>
                 ) : (
                     <Text style={[styles.emptyText, {marginBottom:20}]}>
-                        Você não tem turmas cadastradas para este nível.
+                        Nenhuma série específica encontrada.
                     </Text>
                 )}
 
-                {/* BLOCO PLANEJAMENTO */}
+                {/* PLANEJAMENTO */}
                 <View style={styles.sectionBox}>
                     <View style={styles.sectionHeaderRow}>
-                        <Text style={styles.sectionTitle}>
-                            📖 Planejamento ({activeSeriesYear || 'Geral'})
-                        </Text>
+                        <Text style={styles.sectionTitle}>📖 Planejamento ({activeSeriesYear})</Text>
                         <MaterialCommunityIcons name="lock" size={16} color="#888" /> 
                     </View>
                     
@@ -315,33 +323,47 @@ export default function ProfessorConteudo({ route }) {
                                     onPress={() => navigation.navigate('ViewPDF', { url: activePlan.pdfUrl })}
                                 >
                                     <MaterialCommunityIcons name="file-pdf-box" size={20} color="#1154D9" />
-                                    <Text style={styles.viewPdfText}>Visualizar PDF do Plano</Text>
+                                    <Text style={styles.viewPdfText}>Visualizar PDF</Text>
                                 </TouchableOpacity>
                             ) : (
-                                <Text style={{fontSize: 12, color: '#666', marginTop: 5, fontStyle:'italic'}}>
-                                    (Este plano não possui PDF anexado)
-                                </Text>
+                                <Text style={{fontSize: 12, color: '#666', marginTop: 5, fontStyle:'italic'}}>(Sem PDF)</Text>
                             )}
                         </View>
                     ) : (
-                        <Text style={styles.emptyText}>Nenhum plano cadastrado para {activeSeriesYear}.</Text>
+                        <Text style={styles.emptyText}>Nenhum plano cadastrado.</Text>
                     )}
                 </View>
 
-                {/* BLOCO MEUS MATERIAIS */}
+                {/* CONTEÚDOS COM BOTÃO DE EXCLUIR CORRIGIDO */}
                 <View style={styles.sectionBox}>
                     <Text style={styles.sectionTitle}>📂 Materiais: {activeSeriesYear}</Text>
                     
-                    {filteredContents.map(item => (
-                        <TouchableOpacity key={item.id} style={styles.contentItem} onPress={() => handleOpenItem(item)}>
-                            <MaterialCommunityIcons name={item.url ? "file-pdf-box" : "text-box"} size={24} color="#555" />
-                            <Text style={{flex: 1, marginLeft: 10}} numberOfLines={1}>{item.name}</Text>
-                            <TouchableOpacity onPress={() => deleteContent(item.id)} style={{padding: 5}}>
-                                <MaterialCommunityIcons name="trash-can" size={20} color="red" />
+                    {allContents.map(item => (
+                        <View key={item.id} style={styles.contentItemRow}>
+                            <TouchableOpacity 
+                                style={styles.contentInfoArea} 
+                                onPress={() => handleOpenItem(item)}
+                            >
+                                <MaterialCommunityIcons 
+                                    name={item.type === 'pdf' || (item.url && item.url.includes('.pdf')) ? "file-pdf-box" : "text-box"} 
+                                    size={24} 
+                                    color={item.type === 'pdf' || (item.url && item.url.includes('.pdf')) ? "#E91E63" : "#1154D9"} 
+                                />
+                                <Text style={styles.contentText} numberOfLines={1}>
+                                    {item.name}
+                                </Text>
                             </TouchableOpacity>
-                        </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                onPress={() => deleteContent(item.id)} 
+                                style={styles.deleteButton}
+                                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+                            >
+                                <MaterialCommunityIcons name="trash-can-outline" size={22} color="#D32F2F" />
+                            </TouchableOpacity>
+                        </View>
                     ))}
-                    {filteredContents.length === 0 && (
+                    {allContents.length === 0 && (
                         <Text style={styles.emptyText}>Nada criado para {activeSeriesYear}.</Text>
                     )}
                 </View>
@@ -363,7 +385,7 @@ export default function ProfessorConteudo({ route }) {
           </View>
       )}
 
-      {/* MODAL DE SELEÇÃO (DROPDOWN) */}
+      {/* MODAIS (Dropdown e IA) */}
       <Modal visible={dropdownVisible} transparent animationType="fade" onRequestClose={() => setDropdownVisible(false)}>
         <TouchableOpacity style={styles.modalOverlayCenter} activeOpacity={1} onPress={() => setDropdownVisible(false)}>
              <View style={styles.dropdownModalContent}>
@@ -387,7 +409,6 @@ export default function ProfessorConteudo({ route }) {
         </TouchableOpacity>
       </Modal>
 
-      {/* MODAL IA */}
       <Modal visible={iaModalVisible} transparent animationType="slide">
          <View style={styles.iaOverlay}>
             <View style={styles.iaContent}>
@@ -397,45 +418,33 @@ export default function ProfessorConteudo({ route }) {
                     <MaterialCommunityIcons name="close" size={24} color="#fff" />
                   </TouchableOpacity>
                 </View>
-                
                 <ScrollView style={styles.iaResponseArea}>
                     {isIaLoading ? (
                         <ActivityIndicator size="large" color="#BAF241" style={{marginTop: 20}} />
                     ) : (
                         <Text style={styles.iaResponseText}>
-                            {iaResponse || `Seu assistente está pronto para criar conteúdo para ${activeSeriesYear}.`}
+                            {iaResponse || `Criando para ${activeSeriesYear}...`}
                         </Text>
                     )}
                 </ScrollView>
-                
                 {iaResponse && !isIaLoading ? (
                     <TouchableOpacity style={styles.btnSave} onPress={saveIaContent}>
                         <Text style={styles.btnSaveText}>💾 Salvar Material</Text>
                     </TouchableOpacity>
                 ) : null}
-
                 <View style={styles.iaInputGroup}>
                     <TextInput 
                         style={styles.iaInput} 
-                        placeholder="O que você quer criar?" 
+                        placeholder="O que criar?" 
                         placeholderTextColor="#888"
                         value={iaPrompt} 
                         onChangeText={setIaPrompt} 
                         multiline 
                     />
-                    <TouchableOpacity 
-                        onPress={handleGenerateIa} 
-                        style={[styles.iaButton, {backgroundColor: '#1154D9'}]}
-                        disabled={isIaLoading}
-                    >
-                        {isIaLoading ? (
-                            <ActivityIndicator size="small" color="#fff"/>
-                        ) : (
-                            <MaterialCommunityIcons name="send" size={20} color="#fff" />
-                        )}
+                    <TouchableOpacity onPress={handleGenerateIa} style={[styles.iaButton, {backgroundColor: '#1154D9'}]}>
+                        {isIaLoading ? <ActivityIndicator size="small" color="#fff"/> : <MaterialCommunityIcons name="send" size={20} color="#fff" />}
                     </TouchableOpacity>
                 </View>
-                
             </View>
          </View>
       </Modal>
@@ -448,15 +457,19 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#fff', elevation: 2 },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#333', textAlign: 'center', flex: 1 },
   container: { flex: 1 },
+  
+  // CARDS DE NÍVEL
   yearCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 15, borderRadius: 12, marginBottom: 15, elevation: 2 },
   yearIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#1154D9', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   yearTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   yearSub: { fontSize: 12, color: '#888' },
+  
+  // SEÇÕES
   sectionBox: { backgroundColor: '#fff', padding: 20, marginBottom: 20, borderRadius: 10 },
   sectionHeaderRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1154D9', marginBottom: 5 },
   
-  // ESTILOS DO DROPDOWN
+  // DROPDOWN
   filterLabel: { fontSize: 14, color: '#555', fontWeight: 'bold', marginBottom: 8, marginLeft: 5 },
   dropdownButton: {
     backgroundColor: '#1154D9',
@@ -467,26 +480,48 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 3
+    elevation: 3
   },
   dropdownText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
 
-  // ESTILOS DO BOTÃO VIEW PDF
-  viewPdfButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#E3F2FD',
-      padding: 10,
-      borderRadius: 8,
-      marginTop: 10,
-      alignSelf: 'flex-start'
-  },
+  // PLANOS DE AULA
+  planCard: { backgroundColor: '#f0f0f0', padding: 15, borderRadius: 8 },
+  planName: { fontWeight: 'bold', fontSize: 16, color: '#333' },
+  viewPdfButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E3F2FD', padding: 10, borderRadius: 8, marginTop: 10, alignSelf: 'flex-start' },
   viewPdfText: { color: '#1154D9', fontWeight: 'bold', marginLeft: 8, fontSize: 14 },
 
-  // Modal do Dropdown
+  // --- ESTILOS DA LISTA DE CONTEÚDOS ---
+  contentItemRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 12, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff' 
+  },
+  contentInfoArea: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center' 
+  },
+  contentText: { 
+    flex: 1, 
+    marginLeft: 10, 
+    fontSize: 14, 
+    color: '#333' 
+  },
+  deleteButton: { 
+    padding: 10, 
+    marginLeft: 5 
+  },
+
+  emptyText: { color: '#999', fontStyle: 'italic', textAlign: 'center', marginTop: 10 },
+  
+  // FABs
+  fabContainer: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row', gap: 10 },
+  fab: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', elevation: 5 },
+
+  // MODAIS (Dropdown e IA)
   modalOverlayCenter: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   dropdownModalContent: { backgroundColor: '#fff', borderRadius: 15, width: '80%', padding: 20, maxHeight: '50%', elevation: 5 },
   dropdownModalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textAlign: 'center', color: '#333' },
@@ -494,15 +529,6 @@ const styles = StyleSheet.create({
   dropdownOptionActive: { backgroundColor: '#F0F7FF' },
   dropdownOptionText: { fontSize: 16, color: '#333' },
 
-  planCard: { backgroundColor: '#f0f0f0', padding: 15, borderRadius: 8 },
-  planName: { fontWeight: 'bold', fontSize: 16, color: '#333' },
-  moduleText: { fontSize: 13, color: '#555', marginLeft: 5 },
-  contentItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  emptyText: { color: '#999', fontStyle: 'italic', textAlign: 'center', marginTop: 10 },
-  fabContainer: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row', gap: 10 },
-  fab: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', elevation: 5 },
-
-  // MODAL IA
   iaOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0, 0, 0, 0.7)' },
   iaContent: { backgroundColor: '#1e1e1e', height: '80%' },
   newHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#444' },
