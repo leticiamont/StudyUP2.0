@@ -25,16 +25,33 @@ export default function AlunoConteudoA() {
   const fetchContents = async (userData) => {
     setLoading(true);
     try {
-      let endpoint = `/api/contents`;
-      if (userData.classId) endpoint += `?classId=${userData.classId}`;
-      else if (userData.gradeLevel) endpoint += `?gradeLevel=${userData.gradeLevel}`;
-      else { setLoading(false); return; }
-      const response = await api.get(endpoint);
+      let endpoint = `/api/contents?`;
+      const params = [];
+      
+      // Envia SEMPRE o classId se tiver (é o mais importante)
+      if (userData.classId) {
+          params.push(`classId=${userData.classId}`);
+      } 
+      // Envia gradeLevel como backup
+      if (userData.gradeLevel) {
+          params.push(`gradeLevel=${encodeURIComponent(userData.gradeLevel)}`);
+      }
+      
+      if (params.length === 0) {
+          setLoading(false); 
+          return;
+      }
+
+      // Adiciona timestamp para evitar cache
+      const cacheBuster = `t=${new Date().getTime()}`;
+      params.push(cacheBuster);
+
+      const response = await api.get(endpoint + params.join('&'));
       setContents(response.data);
     } catch (error) { console.error("Erro:", error); } 
     finally { setLoading(false); }
   };
-
+  
   const handleLogout = async () => {
     if (window.confirm("Sair?")) {
       await signOut(auth); localStorage.removeItem("token"); navigate("/");

@@ -70,9 +70,7 @@ export default function AlunoJogosA() {
             
             <div onClick={() => navigate('/aluno/jogos')} className="s-nav-item active"><span className="material-symbols-rounded">sports_esports</span> Jogos</div>
             
-            <div onClick={() => navigate('/aluno/forum')} className="s-nav-item">
-                <span className="material-symbols-rounded">forum</span> Fórum
-            </div>
+            <div onClick={() => navigate('/aluno/forum')} className="s-nav-item"><span className="material-symbols-rounded">forum</span> Fórum</div>
         </nav>
         <button className="btn-logout" onClick={handleLogout}><span className="material-symbols-rounded">logout</span> Sair</button>
       </aside>

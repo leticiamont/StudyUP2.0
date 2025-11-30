@@ -35,13 +35,15 @@ export default function DashboardPageA() {
       localStorage.setItem("userData", JSON.stringify(userData));
 
       if (userData.classId) {
-        const contentRes = await api.get(`/api/contents?classId=${userData.classId}`);
+        const cacheBuster = `t=${new Date().getTime()}`;
+        // Busca usando a lógica inteligente do backend
+        const contentRes = await api.get(`/api/contents?classId=${userData.classId}&${cacheBuster}`);
         setNextActivities(contentRes.data.slice(0, 2));
       }
     } catch (error) { console.error("Erro:", error); } 
     finally { setLoading(false); }
   };
-
+  
   const handleLogout = async () => {
     if (window.confirm("Sair do StudyUp?")) {
       await signOut(auth);

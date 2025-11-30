@@ -175,7 +175,7 @@ export default function ProfessorConteudo({ route }) {
           const token = await AsyncStorage.getItem('userToken');
           
           // ATENÇÃO: Verifique se o IP está correto
-          const response = await fetch('http://192.168.0.90:3000/api/contents/upload', {
+          const response = await fetch('http://192.168.15.30:3000/api/contents/upload', {
             method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData,
           });
           
