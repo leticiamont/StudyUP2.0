@@ -68,24 +68,62 @@ export const uploadContent = async (req, res) => {
 
 export const getContents = async (req, res) => {
   try {
-    const { classId } = req.query;
-    const userId = req.user.uid; // O ID do professor logado
+    const { classId, gradeLevel } = req.query;
+    const userId = req.user?.uid; 
 
-    let query = db.collection(CONTENT_COLLECTION);
+    // Lista final de conteúdos
+    let allContents = [];
+    const addedIds = new Set(); // Para evitar duplicatas
 
+    // 1. BUSCA POR ID DA TURMA (Prioridade Máxima)
+    // Pega tudo que foi postado ESPECIFICAMENTE para essa sala (ex: 9º A)
     if (classId) {
-      // Se pedir de uma turma, mostra tudo da turma (filtro por turma)
-      query = query.where('classId', '==', classId);
-    } else {
-      // Se NÃO pedir turma (ou seja, "Meus Conteúdos" ou "Banco"),
-      // mostra APENAS o que ESSE professor criou.
-      query = query.where('authorId', '==', userId);
+      const snapshotClass = await db.collection(CONTENT_COLLECTION)
+        .where('classId', '==', classId)
+        .get();
+      
+      snapshotClass.forEach(doc => {
+        allContents.push({ id: doc.id, ...doc.data() });
+        addedIds.add(doc.id);
+      });
     }
 
-    const snapshot = await query.get();
-    const contents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // 2. BUSCA POR SÉRIE (Conteúdo Genérico)
+    // Pega materiais marcados como "9º Ano" (para todas as turmas)
+    if (gradeLevel) {
+      const snapshotGrade = await db.collection(CONTENT_COLLECTION)
+        .where('gradeLevel', '==', gradeLevel)
+        .get();
 
-    res.status(200).json(contents);
+      snapshotGrade.forEach(doc => {
+        const data = doc.data();
+        
+        // FILTRO DE SEGURANÇA:
+        // Só adicionamos este conteúdo se:
+        // a) Ele NÃO tiver classId (é um conteúdo público para todos do 9º ano)
+        // b) OU se o classId dele for igual ao nosso (garantia extra)
+        // Isso evita que a aluna do "9º A" veja a prova do "9º B" que foi salva com tag "9º Ano".
+        
+        const isPublico = !data.classId; 
+        const isDaMinhaTurma = data.classId === classId;
+
+        if (!addedIds.has(doc.id) && (isPublico || isDaMinhaTurma)) {
+           allContents.push({ id: doc.id, ...data });
+           addedIds.add(doc.id);
+        }
+      });
+    }
+
+    // 3. SE NÃO TIVER FILTROS (Visão do Professor/Admin)
+    if (!classId && !gradeLevel) {
+       const snapshotAuthor = await db.collection(CONTENT_COLLECTION)
+         .where('authorId', '==', userId)
+         .get();
+       
+       allContents = snapshotAuthor.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    res.status(200).json(allContents);
 
   } catch (error) {
     console.error('[contentController:getContents] Erro:', error.message);
@@ -93,18 +131,64 @@ export const getContents = async (req, res) => {
   }
 };
 
-// 3. FUNÇÃO DE DELETAR
+// --- FUNÇÃO AUXILIAR (ADICIONAR) ---
+// Serve para extrair o ID do arquivo (public_id) a partir do link
+const getCloudinaryPublicId = (url) => {
+  if (!url) return null;
+  try {
+    // 1. Descobre se é 'image', 'video' ou 'raw' pela URL
+    let resourceType = 'image';
+    if (url.includes('/raw/upload')) resourceType = 'raw';
+    if (url.includes('/video/upload')) resourceType = 'video';
+
+    // 2. Extrai o ID (tudo que está depois de 'upload/' e da versão 'v123...')
+    const regex = /\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z0-9]+$/;
+    const match = url.match(regex);
+    
+    const publicId = match ? match[1] : null;
+    
+    return { publicId, resourceType };
+  } catch (error) {
+    console.error('Erro ao processar URL do Cloudinary:', error);
+    return { publicId: null, resourceType: 'image' };
+  }
+};
+
+// --- FUNÇÃO DELETAR (SUBSTITUIR A ANTIGA POR ESTA) ---
 export const deleteContent = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Deleta o registro do banco de dados
-    await db.collection(CONTENT_COLLECTION).doc(id).delete();
+    // 1. Busca o documento no banco ANTES de apagar (para pegar a URL)
+    const docRef = db.collection(CONTENT_COLLECTION).doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ error: "Conteúdo não encontrado." });
+    }
+
+    const contentData = doc.data();
+
+    // 2. Se tiver uma URL do Cloudinary, apaga o arquivo lá
+    if (contentData.url && contentData.url.includes('cloudinary.com')) {
+      const { publicId, resourceType } = getCloudinaryPublicId(contentData.url);
+
+      if (publicId) {
+        console.log(`Apagando do Cloudinary: ${publicId} (Tipo: ${resourceType})`);
+        
+        // Comando para destruir o arquivo na nuvem
+        await cloudinary.uploader.destroy(publicId, { 
+          resource_type: resourceType,
+          invalidate: true 
+        });
+      }
+    }
     
-    // (Futuramente adicionar aqui o código para deletar do Cloudinary também)
+    // 3. Agora sim, apaga o registro do banco de dados (Firestore)
+    await docRef.delete();
     
     console.log(`Conteúdo ${id} apagado com sucesso.`);
-    res.status(200).json({ message: "Conteúdo apagado." });
+    res.status(200).json({ message: "Conteúdo e arquivo apagados com sucesso." });
 
   } catch (error) {
     console.error("Erro ao deletar:", error);
