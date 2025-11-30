@@ -4,10 +4,10 @@ import { initLayout } from './componentLoader.js';
 console.log('[planos.js] Carregando...');
 initLayout();
 
+let currentEditingId = null; // Variável para controlar se é Edição ou Criação
 let actionToConfirm = null; 
-let currentEditingId = null; // <- NOVO: Para saber se estamos editando
 
-// Mapa de Níveis -> Anos (Para o Modal de Criação)
+// Mapa de Níveis -> Anos
 const schoolYearsMap = {
   "Fundamental 1": ["1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano"],
   "Fundamental 2": ["6º Ano", "7º Ano", "8º Ano", "9º Ano"],
@@ -15,38 +15,75 @@ const schoolYearsMap = {
 };
 
 document.addEventListener('componentsLoaded', () => {
-  // --- Seleção de Elementos ---
-  const tabelaPlanosBody = document.getElementById('tabelaPlanosBody');
-  const openModalPlanoBtn = document.getElementById('openModalPlanoBtn');
-  const modalPlano = document.getElementById('modalPlano');
-  const closeModalPlanoBtn = document.getElementById('closeModalPlanoBtn');
-  const formPlano = document.getElementById('formPlano');
-  const planoNameInput = document.getElementById('plano-name');
-  const planoGradeInput = document.getElementById('plano-gradeLevel');
-  const planoYearInput = document.getElementById('plano-schoolYear');
-  const planoFileInput = document.getElementById('plano-file');
-  const planosSearch = document.getElementById('planos-search');
-  const planosFilterGrade = document.getElementById('planos-filter-grade');
-  
-  // Modais Genéricos
-  const statusTitle = document.getElementById('statusModalTitle');
-  const statusMsg = document.getElementById('statusModalMessage');
-  const modalStatus = document.getElementById('modalStatus');
-  const closeStatusBtn = document.getElementById('closeStatusModalBtn');
-  const okStatusBtn = document.getElementById('okStatusModalBtn');
-  const modalConfirmacao = document.getElementById('modalConfirmacao');
-  const closeConfirmacaoBtn = document.getElementById('closeConfirmacaoModalBtn');
-  const confirmarAcaoBtn = document.getElementById('confirmarAcaoBtn');
-  const closePdfBtn = document.getElementById('closePdfBtn');
+  console.log('[planos.js] Evento "componentsLoaded" recebido.');
 
   // --- Funções Auxiliares de Modal ---
   const getElement = (id) => document.getElementById(id);
-  const showStatus = (title, msg) => { /* ... */ };
-  const closeStatus = () => { /* ... */ };
-  const showConfirm = (msg, callback) => { /* ... */ };
-  const closeConfirm = () => { /* ... */ };
-  const openPDF = (url, title) => { /* ... */ };
-  const closePDF = () => { /* ... */ };
+
+  const showStatus = (title, msg) => {
+    const modalStatus = getElement('modalStatus');
+    if (modalStatus) {
+        getElement('statusModalTitle').textContent = title;
+        getElement('statusModalMessage').textContent = msg;
+        modalStatus.style.display = 'flex';
+    }
+  };
+  const closeStatus = () => getElement('modalStatus').style.display = 'none';
+
+  const showConfirm = (msg, callback) => {
+    const modalConfirmacao = getElement('modalConfirmacao');
+    if (modalConfirmacao) {
+        getElement('confirmacaoMessage').textContent = msg;
+        actionToConfirm = callback;
+        modalConfirmacao.style.display = 'flex';
+    }
+  };
+  const closeConfirm = () => {
+    const modalConfirmacao = getElement('modalConfirmacao');
+    if (modalConfirmacao) modalConfirmacao.style.display = 'none';
+    actionToConfirm = null;
+  };
+
+  const openPDF = (url, title) => {
+    const modalViewPDF = getElement('modalViewPDF');
+    if (!modalViewPDF) return;
+    getElement('pdfTitle').textContent = title || "Visualizando Arquivo";
+    const googleViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
+    getElement('pdfViewerFrame').src = googleViewerUrl;
+    modalViewPDF.style.display = 'flex';
+  };
+  const closePDF = () => {
+    const modalViewPDF = getElement('modalViewPDF');
+    if (modalViewPDF) modalViewPDF.style.display = 'none';
+    if (getElement('pdfViewerFrame')) getElement('pdfViewerFrame').src = "about:blank";
+  };
+
+
+  // --- 1. Seleção (Elementos) ---
+  const tabelaPlanosBody = getElement('tabelaPlanosBody');
+  const openModalPlanoBtn = getElement('openModalPlanoBtn');
+  const modalPlano = getElement('modalPlano');
+  const closeModalPlanoBtn = getElement('closeModalPlanoBtn');
+  const formPlano = getElement('formPlano');
+  
+  const planoNameInput = getElement('plano-name');
+  const planoGradeInput = getElement('plano-gradeLevel');
+  const planoYearInput = getElement('plano-schoolYear');
+  const planoFileInput = getElement('plano-file');
+  
+  // Elementos dinâmicos do modal (Título e Botão)
+  const modalTitle = modalPlano.querySelector('h2');
+  const submitBtn = formPlano.querySelector('button[type="submit"]');
+
+  const planosSearch = getElement('planos-search');
+  const planosFilterGrade = getElement('planos-filter-grade');
+
+  const closeStatusBtn = getElement('closeStatusModalBtn');
+  const okStatusBtn = getElement('okStatusModalBtn');
+  const closeConfirmacaoBtn = getElement('closeConfirmacaoModalBtn');
+  const cancelarConfirmacaoBtn = getElement('cancelarConfirmacaoBtn');
+  const confirmarAcaoBtn = getElement('confirmarAcaoBtn');
+  const closePdfBtn = getElement('closePdfBtn');
 
 
   // --- Lógica de Planos ---
@@ -67,7 +104,6 @@ document.addEventListener('componentsLoaded', () => {
     });
   }
 
-
   const loadPlanos = async () => {
     tabelaPlanosBody.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
     const params = new URLSearchParams();
@@ -77,7 +113,9 @@ document.addEventListener('componentsLoaded', () => {
     try {
       const planos = await api.get(`/api/plans?viewMode=admin&${params.toString()}`);
       tabelaPlanosBody.innerHTML = '';
-      if (!planos || planos.length === 0) { tabelaPlanosBody.innerHTML = '<tr><td colspan="4">Nenhum plano.</td></tr>'; return; }
+      if (!planos || planos.length === 0) {
+        tabelaPlanosBody.innerHTML = '<tr><td colspan="4">Nenhum plano.</td></tr>'; return;
+      }
       planos.forEach(p => {
          const tr = document.createElement('tr');
          let btnPdf = p.pdfUrl ? `<button class="btn-link view-pdf-btn" data-url="${p.pdfUrl}" data-name="${p.name}" style="background:none;border:none;color:#007BFF;cursor:pointer;text-decoration:underline;">Ver PDF</button>` : '<span style="color:#ccc">Sem arquivo</span>';
@@ -87,7 +125,7 @@ document.addEventListener('componentsLoaded', () => {
            <td>${p.gradeLevel} (${p.schoolYear || '-'})</td>
            <td>${btnPdf}</td>
            <td>
-             <button class="btn btn-secondary btn-sm edit-btn-plano" data-id="${p.id}" style="margin-right: 5px;">Editar</button>
+             <button class="btn btn-secondary btn-sm edit-btn-plano" data-id="${p.id}">Editar</button>
              <button class="btn btn-danger btn-sm delete-btn-plano" data-id="${p.id}">Apagar</button>
            </td>
          `;
@@ -96,13 +134,14 @@ document.addEventListener('componentsLoaded', () => {
     } catch (e) { tabelaPlanosBody.innerHTML = `<tr><td colspan="4" style="color: red;">${e.message}</td></tr>`; }
   };
 
+  // --- FUNÇÃO UNIFICADA DE SUBMIT (CRIAR E EDITAR) ---
   const handlePlanoFormSubmit = async (e) => {
     e.preventDefault();
     
-    const isEditing = currentEditingId !== null;
     const file = planoFileInput.files[0];
-    
-    // Regra: Se está criando OU editando E não tem arquivo, precisa de um PDF
+    const isEditing = currentEditingId !== null;
+
+    // Validação: Se for criar, PDF é obrigatório. Se for editar, é opcional.
     if (!isEditing && !file) { 
         showStatus('Aviso', "Selecione um arquivo PDF."); 
         return; 
@@ -113,30 +152,26 @@ document.addEventListener('componentsLoaded', () => {
     btn.textContent = "Enviando...";
     btn.disabled = true;
 
-    // 1. Coleta dados: Envia TUDO (incluindo file, que pode ser undefined)
     const formData = new FormData();
     formData.append('name', planoNameInput.value);
     formData.append('gradeLevel', planoGradeInput.value);
     formData.append('schoolYear', planoYearInput.value);
+    
+    // Só anexa o arquivo se ele foi selecionado
     if (file) {
         formData.append('pdfFile', file);
     }
-    
-    // 2. Chama a API
+
     try {
       const token = localStorage.getItem("authToken");
       let url = '/api/plans';
       let method = 'POST';
 
       if (isEditing) {
-        url = `/api/plans/${currentEditingId}`;
-        method = 'PUT'; // O PUT (atualizar) deve aceitar FormData/Multipart
+          url = `/api/plans/${currentEditingId}`; // URL de atualização
+          method = 'PUT';
       }
 
-      // IMPORTANTE: O PUT/POST com FormData deve ser feito via fetch, 
-      // mas precisamos de uma solução que envie os campos text também.
-      // O backend deve ser capaz de lidar com a ausência de req.file se for PUT.
-      
       const response = await fetch(`http://localhost:3000${url}`, {
           method: method,
           headers: token ? { 'Authorization': `Bearer ${token}` } : {},
@@ -157,73 +192,80 @@ document.addEventListener('componentsLoaded', () => {
     }
   };
 
-
-  // --- Funções do Modal (NOVO: Edit) ---
+  // --- FUNÇÕES DE MODAL (ABRIR) ---
 
   const openModalCriar = () => {
     currentEditingId = null;
     formPlano.reset();
+    
+    // Reseta textos
+    modalTitle.textContent = 'Novo Plano de Aula';
+    submitBtn.textContent = 'Salvar e Enviar PDF';
+    
+    // Reseta estado dos inputs
     planoYearInput.disabled = true;
-    planoGradeInput.dispatchEvent(new Event('change')); // Limpa o dropdown Ano
+    planoYearInput.innerHTML = '<option value="">Selecione o nível primeiro</option>';
+    
+    // PDF Obrigatório na criação
+    const fileLabel = formPlano.querySelector('label[for="plano-file"]');
+    fileLabel.innerHTML = 'Arquivo PDF';
+    planoFileInput.required = true;
+
     modalPlano.style.display = 'flex';
   };
 
-  const openModalParaEditar = async (id) => {
+  const openModalEditar = async (id) => {
     currentEditingId = id;
-    
-    const modalTitle = modalPlano.querySelector('h2');
-    const submitBtn = formPlano.querySelector('button[type="submit"]');
-
-    modalTitle.textContent = 'Editar Plano de Aula';
-    submitBtn.textContent = 'Atualizar';
     formPlano.reset();
-
+    
+    modalTitle.textContent = 'Editar Plano de Aula';
+    submitBtn.textContent = 'Atualizar Plano';
+    
     try {
+        // Busca os dados atuais
         const plano = await api.get(`/api/plans/${id}`);
         
+        // Preenche os campos
         planoNameInput.value = plano.name || '';
         planoGradeInput.value = plano.gradeLevel || '';
         
-        // Carrega Anos (Cascata)
+        // Dispara evento para carregar os anos
         planoGradeInput.dispatchEvent(new Event('change'));
-
+        
+        // Seleciona o ano correto após carregar
         setTimeout(() => {
             planoYearInput.value = plano.schoolYear || '';
         }, 50);
 
-        // Seção para o PDF:
-        const fileInput = document.getElementById('plano-file');
-        const fileLabel = fileInput.closest('.form-group').querySelector('label[for="plano-file"]');
+        // PDF Opcional na edição
+        const fileLabel = formPlano.querySelector('label[for="plano-file"]');
+        planoFileInput.removeAttribute('required');
         
         if (plano.pdfUrl) {
-            // Se já tem PDF, torna o input OPCIONAL e mostra o link
-            fileInput.removeAttribute('required');
-            fileLabel.innerHTML = `Arquivo PDF (Atual: <a href="${plano.pdfUrl}" target="_blank">Ver PDF</a> - *Opcional*)`;
+            fileLabel.innerHTML = `Arquivo PDF (Atual: <a href="${plano.pdfUrl}" target="_blank">Ver</a> - *Opcional*)`;
         } else {
-            fileInput.required = true;
-            fileLabel.textContent = 'Arquivo PDF';
+            fileLabel.textContent = 'Arquivo PDF (Opcional)';
         }
-        
+
         modalPlano.style.display = 'flex';
+
     } catch (e) {
-        showStatus('Erro', e.message);
+        showStatus('Erro', 'Erro ao carregar dados do plano: ' + e.message);
     }
   };
+
   // --- Listeners ---
-  
-  // Botão Adicionar
   openModalPlanoBtn.addEventListener('click', openModalCriar);
+  
   closeModalPlanoBtn.addEventListener('click', () => modalPlano.style.display = 'none');
   formPlano.addEventListener('submit', handlePlanoFormSubmit);
   
-  // Listener da Tabela
   tabelaPlanosBody.addEventListener('click', async (e) => {
     const target = e.target.closest('button');
     if (!target) return;
     const id = target.dataset.id;
     const name = target.dataset.name;
 
-    // 1. DELETE
     if (target.classList.contains('delete-btn-plano')) {
       showConfirm(`Tem certeza que quer apagar o plano '${name}'?`, async () => {
         try {
@@ -233,26 +275,22 @@ document.addEventListener('componentsLoaded', () => {
         } catch(e) { showStatus('Erro', e.message); }
       });
     }
-    // 2. EDITAR
+    // AGORA SIM: EDITAR ABRE O MODAL CERTO
     if (target.classList.contains('edit-btn-plano')) {
-        openModalParaEditar(id);
+        openModalEditar(id);
     }
-    // 3. VIEW PDF
     if (target.classList.contains('view-pdf-btn')) {
         e.preventDefault();
-        openPDF(target.dataset.url, target.dataset.name);
+        const url = target.dataset.url;
+        openPDF(url, name);
     }
   });
-
-
-  // Cascata Nível -> Ano Listener (JÁ DEFINIDO ACIMA)
-
 
   // Filtros
   planosSearch.addEventListener('input', loadPlanos);
   planosFilterGrade.addEventListener('change', loadPlanos);
 
-  // Modais Genéricos Listeners
+  // Modais Genéricos
   closeStatusBtn.addEventListener('click', closeStatus);
   okStatusBtn.addEventListener('click', closeStatus);
   closeConfirmacaoBtn.addEventListener('click', closeConfirm);
