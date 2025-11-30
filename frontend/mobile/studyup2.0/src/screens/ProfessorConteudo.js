@@ -10,7 +10,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// 1. MAPEAMENTO E ORDEM
+// 1. MAPEAMENTO E ORDEM (Usado apenas para ordenação visual agora)
 const SERIES_MAP = {
     "Ensino Médio": ["1ª Série", "2ª Série", "3ª Série"],
     "Médio": ["1ª Série", "2ª Série", "3ª Série"],
@@ -34,6 +34,9 @@ export default function ProfessorConteudo({ route }) {
   const [selectedGrade, setSelectedGrade] = useState(null);
   const [yearsList, setYearsList] = useState([]);
   
+  // NOVO: Guarda as turmas da professora para filtrar as séries depois
+  const [myClassesState, setMyClassesState] = useState([]);
+
   const [allPlansList, setAllPlansList] = useState([]); 
   const [allContents, setAllContents] = useState([]); 
   const [availableSeries, setAvailableSeries] = useState([]); 
@@ -54,7 +57,12 @@ export default function ProfessorConteudo({ route }) {
     setLoading(true);
     try {
       const classes = await api.get('/api/classes');
+      
+      // Filtra apenas as turmas DESTE professor
       const myClasses = classes.filter(c => c.teacherId === user.uid);
+      setMyClassesState(myClasses); // <--- Salvamos para usar depois no dropdown
+
+      // Agrupa os Níveis (Cards Grandes)
       const uniqueGrades = [...new Set(myClasses.map(c => c.gradeLevel))];
       
       const sortedGrades = uniqueGrades.sort((a, b) => {
@@ -73,19 +81,32 @@ export default function ProfessorConteudo({ route }) {
     setSelectedGrade(grade);
     setLoading(true);
     try {
-      const plansResponse = await api.get(`/api/plans?gradeLevel=${grade}`);
+      const plansResponse = await api.get(`/api/plans?gradeLevel=${encodeURIComponent(grade)}`);
       setAllPlansList(Array.isArray(plansResponse) ? plansResponse : []);
 
-      const contents = await api.get(`/api/contents?gradeLevel=${grade}`);
+      const contents = await api.get(`/api/contents?gradeLevel=${encodeURIComponent(grade)}`);
       setAllContents(Array.isArray(contents) ? contents : []);
       
-      const seriesList = SERIES_MAP[grade] || [];
-      setAvailableSeries(seriesList);
+      // --- LÓGICA CORRIGIDA DO FILTRO DE SÉRIES ---
+      // 1. Pega todas as turmas que a professora tem nesse Nível (ex: Médio)
+      const classesInThisGrade = myClassesState.filter(c => c.gradeLevel === grade);
       
-      // Mantém a série ativa se ela ainda existir na lista, senão pega a primeira
-      if (seriesList.length > 0) {
-          if (!activeSeriesYear || !seriesList.includes(activeSeriesYear)) {
-             setActiveSeriesYear(seriesList[0]);
+      // 2. Extrai as séries específicas (ex: "3ª Série") dessas turmas
+      // Usa Set para não repetir se ela tiver "3ª A" e "3ª B"
+      const realSeries = [...new Set(classesInThisGrade.map(c => c.schoolYear))].filter(Boolean);
+
+      // 3. Ordena visualmente (1º, 2º, 3º...) usando o mapa padrão
+      const orderMap = SERIES_MAP[grade] || [];
+      const sortedSeries = realSeries.sort((a, b) => {
+          return orderMap.indexOf(a) - orderMap.indexOf(b);
+      });
+
+      setAvailableSeries(sortedSeries);
+      
+      // 4. Seleciona automaticamente a primeira série disponível
+      if (sortedSeries.length > 0) {
+          if (!activeSeriesYear || !sortedSeries.includes(activeSeriesYear)) {
+             setActiveSeriesYear(sortedSeries[0]);
           }
       } else {
           setActiveSeriesYear(null);
@@ -97,7 +118,7 @@ export default function ProfessorConteudo({ route }) {
 
   const openGradeDetails = (grade) => {
     setViewMode('details');
-    // Reseta a série ativa ao entrar em um novo nível para pegar o padrão (1ª Série/6º Ano/etc)
+    // Reseta a série ao entrar, para que a lógica acima selecione a primeira válida
     setActiveSeriesYear(null); 
     loadContentsAndSeries(grade);
   };
@@ -123,7 +144,6 @@ export default function ProfessorConteudo({ route }) {
 
   // --- AÇÕES ---
   
-  // 1. EDITAR (Lápis) - Corrigido para enviar schoolYear
   const handleEdit = () => {
      if (!activeSeriesYear) return Alert.alert("Atenção", "Selecione uma Série primeiro.");
      navigation.navigate('EditorPlanoAula', { 
@@ -140,7 +160,6 @@ export default function ProfessorConteudo({ route }) {
       }
   };
 
-  // 2. UPLOAD (+) - Corrigido para enviar schoolYear no FormData
   const handleUpload = async () => {
       if (!activeSeriesYear) return Alert.alert("Atenção", "Selecione uma Série antes de enviar arquivos.");
 
@@ -153,13 +172,13 @@ export default function ProfessorConteudo({ route }) {
           else { formData.append('file', { uri: file.uri, name: file.name, type: file.mimeType }); }
           
           formData.append('gradeLevel', selectedGrade); 
-          formData.append('schoolYear', activeSeriesYear); // <--- CRUCIAL
+          formData.append('schoolYear', activeSeriesYear); 
           formData.append('name', file.name);
 
           Alert.alert('Enviando...', 'Carregando arquivo...');
           const token = await AsyncStorage.getItem('userToken');
           
-          // Ajuste o IP se necessário
+          // ATENÇÃO: Verifique se este IP está correto para o seu ambiente
           const response = await fetch('http://192.168.0.90:3000/api/contents/upload', {
             method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData,
           });
@@ -180,8 +199,6 @@ export default function ProfessorConteudo({ route }) {
           }}
       ]);
   }
-
-  // 3. VARINHA MÁGICA (IA) - Corrigida para abrir o modal e salvar com schoolYear
   
   const openIAModal = () => {
       if (!activeSeriesYear) return Alert.alert("Atenção", "Selecione uma Série para a IA criar o conteúdo.");
@@ -210,7 +227,7 @@ export default function ProfessorConteudo({ route }) {
               content: iaResponse,
               type: 'text',
               gradeLevel: selectedGrade,
-              schoolYear: activeSeriesYear // <--- CRUCIAL
+              schoolYear: activeSeriesYear 
           });
           setIaModalVisible(false);
           setIaPrompt('');
@@ -262,8 +279,8 @@ export default function ProfessorConteudo({ route }) {
           <View style={styles.container}>
              <ScrollView contentContainerStyle={{padding: 20}}>
                 
-                {/* DROPDOWN AZUL DE FILTRO */}
-                {availableSeries.length > 0 && (
+                {/* DROPDOWN AZUL (AGORA FILTRADO PELAS TURMAS REAIS) */}
+                {availableSeries.length > 0 ? (
                     <>
                         <Text style={styles.filterLabel}>Filtrar Série:</Text>
                         <TouchableOpacity 
@@ -274,6 +291,10 @@ export default function ProfessorConteudo({ route }) {
                             <MaterialCommunityIcons name="chevron-down" size={24} color="#FFF" />
                         </TouchableOpacity>
                     </>
+                ) : (
+                    <Text style={[styles.emptyText, {marginBottom:20}]}>
+                        Você não tem turmas cadastradas para este nível.
+                    </Text>
                 )}
 
                 {/* BLOCO PLANEJAMENTO */}

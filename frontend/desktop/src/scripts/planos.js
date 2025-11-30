@@ -187,19 +187,28 @@ document.addEventListener('componentsLoaded', () => {
         // Carrega Anos (Cascata)
         planoGradeInput.dispatchEvent(new Event('change'));
 
-        // Seleciona o Ano correto após o delay do dropdown
         setTimeout(() => {
             planoYearInput.value = plano.schoolYear || '';
         }, 50);
 
-        // O input file fica VAZIO ao editar (Admin deve resubir se quiser trocar)
+        // Seção para o PDF:
+        const fileInput = document.getElementById('plano-file');
+        const fileLabel = fileInput.closest('.form-group').querySelector('label[for="plano-file"]');
+        
+        if (plano.pdfUrl) {
+            // Se já tem PDF, torna o input OPCIONAL e mostra o link
+            fileInput.removeAttribute('required');
+            fileLabel.innerHTML = `Arquivo PDF (Atual: <a href="${plano.pdfUrl}" target="_blank">Ver PDF</a> - *Opcional*)`;
+        } else {
+            fileInput.required = true;
+            fileLabel.textContent = 'Arquivo PDF';
+        }
         
         modalPlano.style.display = 'flex';
     } catch (e) {
         showStatus('Erro', e.message);
     }
   };
-
   // --- Listeners ---
   
   // Botão Adicionar

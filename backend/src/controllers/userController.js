@@ -194,3 +194,30 @@ export async function deductPoints(req, res, next) {
     res.status(400).json({ error: err.message }); // Retorna o erro de 'Pontos insuficientes'
   }
 }
+export const addPoints = async (req, res) => {
+  try {
+    const { uid } = req.user; // Pega o ID do token de autenticação
+    const { points } = req.body;
+
+    if (!points || typeof points !== 'number') {
+      return res.status(400).json({ error: 'Pontos inválidos.' });
+    }
+
+    const userRef = db.collection('users').doc(uid);
+    
+    // Atualização atômica (soma segura)
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(userRef);
+      if (!doc.exists) throw new Error("Usuário não encontrado.");
+      
+      const newPoints = (doc.data().points || 0) + points;
+      transaction.update(userRef, { points: newPoints });
+    });
+
+    res.status(200).json({ message: 'Pontos atualizados!' });
+
+  } catch (error) {
+    console.error('Erro ao adicionar pontos:', error);
+    res.status(500).json({ error: 'Erro interno.' });
+  }
+};

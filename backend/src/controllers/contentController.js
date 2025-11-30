@@ -16,10 +16,9 @@ const CONTENT_COLLECTION = 'contents';
 
 export const uploadContent = async (req, res) => {
   try {
-    // Verifica se é upload de arquivo (req.file) ou texto (req.body apenas)
     let publicUrl = null;
-    let mimeType = 'text/plain';
     let originalName = req.body.name || 'Sem Título';
+    let detectedType = 'text'; // Padrão
 
     // 1. SE FOR ARQUIVO (UPLOAD)
     if (req.file) {
@@ -31,26 +30,35 @@ export const uploadContent = async (req, res) => {
             unique_filename: false,
         });
         publicUrl = uploadResult.secure_url;
-        mimeType = req.file.mimetype;
         originalName = req.file.originalname;
         
-        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); // Limpa local
+        // Limpa arquivo local
+        if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+
+        // DETECÇÃO INTELIGENTE DE TIPO
+        const ext = originalName.split('.').pop().toLowerCase();
+        if (ext === 'pdf') {
+            detectedType = 'pdf';
+        } else if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt'].includes(ext)) {
+            detectedType = 'office'; // Word, Excel, PowerPoint
+        } else {
+            detectedType = 'file'; // Outros (imagem, zip, etc)
+        }
     } 
     // 2. SE FOR TEXTO (EDITOR/IA)
     else if (req.body.content) {
-        // Mantém lógica de texto
+        detectedType = 'text';
     }
 
-    // Salva os dados no Firestore
     const contentData = {
       name: req.body.name || originalName,
-      type: req.body.type || (req.file ? 'pdf' : 'text'), // Força tipo
-      content: req.body.content || "", // Se for texto
+      type: req.body.type || detectedType, // Usa o tipo detectado
+      content: req.body.content || "",
       url: publicUrl,
       planId: req.body.planId || null,
       classId: req.body.classId || null,
       gradeLevel: req.body.gradeLevel || null, 
-      schoolYear: req.body.schoolYear || null, // <--- ADICIONADO: CAMPO CRUCIAL
+      schoolYear: req.body.schoolYear || null,
       authorId: req.user?.uid || 'anonym', 
       createdAt: new Date().toISOString(),
     };
@@ -68,15 +76,15 @@ export const uploadContent = async (req, res) => {
 
 export const getContents = async (req, res) => {
   try {
-    const { classId, gradeLevel } = req.query;
+    // Adicionamos 'schoolYear' na extração
+    const { classId, gradeLevel, schoolYear } = req.query; 
     const userId = req.user?.uid; 
 
-    // Lista final de conteúdos
     let allContents = [];
-    const addedIds = new Set(); // Para evitar duplicatas
+    const addedIds = new Set(); // Evita duplicatas
 
-    // 1. BUSCA POR ID DA TURMA (Prioridade Máxima)
-    // Pega tudo que foi postado ESPECIFICAMENTE para essa sala (ex: 9º A)
+    // 1. BUSCA POR TURMA (Prioridade Máxima)
+    // Pega arquivos exclusivos da "Turma A", "Turma B", etc.
     if (classId) {
       const snapshotClass = await db.collection(CONTENT_COLLECTION)
         .where('classId', '==', classId)
@@ -88,22 +96,16 @@ export const getContents = async (req, res) => {
       });
     }
 
-    // 2. BUSCA POR SÉRIE (Conteúdo Genérico)
-    // Pega materiais marcados como "9º Ano" (para todas as turmas)
-    if (gradeLevel) {
-      const snapshotGrade = await db.collection(CONTENT_COLLECTION)
-        .where('gradeLevel', '==', gradeLevel)
+    // 2. BUSCA POR ANO ESCOLAR (O Correto para "9º Ano", "3ª Série", etc.)
+    // Aqui resolvemos o problema: buscamos onde 'schoolYear' é igual ao ano da aluna
+    if (schoolYear) {
+      const snapshotYear = await db.collection(CONTENT_COLLECTION)
+        .where('schoolYear', '==', schoolYear)
         .get();
 
-      snapshotGrade.forEach(doc => {
+      snapshotYear.forEach(doc => {
         const data = doc.data();
-        
-        // FILTRO DE SEGURANÇA:
-        // Só adicionamos este conteúdo se:
-        // a) Ele NÃO tiver classId (é um conteúdo público para todos do 9º ano)
-        // b) OU se o classId dele for igual ao nosso (garantia extra)
-        // Isso evita que a aluna do "9º A" veja a prova do "9º B" que foi salva com tag "9º Ano".
-        
+        // Filtro de Segurança: Só mostra se for público (sem turma) OU se for da minha turma
         const isPublico = !data.classId; 
         const isDaMinhaTurma = data.classId === classId;
 
@@ -114,8 +116,26 @@ export const getContents = async (req, res) => {
       });
     }
 
-    // 3. SE NÃO TIVER FILTROS (Visão do Professor/Admin)
-    if (!classId && !gradeLevel) {
+    // 3. BUSCA POR NÍVEL (Fallback antigo, ex: "Ensino Médio")
+    if (gradeLevel && !schoolYear) {
+      const snapshotGrade = await db.collection(CONTENT_COLLECTION)
+        .where('gradeLevel', '==', gradeLevel)
+        .get();
+
+      snapshotGrade.forEach(doc => {
+        const data = doc.data();
+        const isPublico = !data.classId; 
+        const isDaMinhaTurma = data.classId === classId;
+        
+        if (!addedIds.has(doc.id) && (isPublico || isDaMinhaTurma)) {
+           allContents.push({ id: doc.id, ...data });
+           addedIds.add(doc.id);
+        }
+      });
+    }
+
+    // 4. SE NÃO TIVER FILTROS (Visão do Professor/Admin)
+    if (!classId && !gradeLevel && !schoolYear) {
        const snapshotAuthor = await db.collection(CONTENT_COLLECTION)
          .where('authorId', '==', userId)
          .get();
