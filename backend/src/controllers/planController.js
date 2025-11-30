@@ -6,34 +6,62 @@ import fs from 'fs';
  * @route GET /api/plans
  * @description Busca planos (Híbrido: Admin vê tudo, Prof vê os dele)
  */
+// backend/src/controllers/planController.js
+
+// backend/src/controllers/planController.js
+
 export const getPlans = async (req, res) => {
-    try {
-      const { search, gradeLevel, classId, viewMode } = req.query;
-      const userId = req.user?.uid;
-  
-      let query = db.collection('plans');
-  
-      if (classId) {
-        query = query.where('classId', '==', classId);
-      } else if (viewMode === 'admin' || !userId) {
-        // Desktop Admin vê tudo
-      } else {
-        query = query.where('authorId', '==', userId); // Mobile vê seus planos
-      }
-  
-      if (gradeLevel) query = query.where('gradeLevel', '==', gradeLevel);
-      
-      const snapshot = await query.get();
-      if (snapshot.empty) return res.status(200).json([]);
-      
-      let plansList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      plansList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  
-      if (search) plansList = plansList.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-      
-      res.status(200).json(plansList);
-    } catch (error) { res.status(500).json({ error: error.message }); }
-  };
+  try {
+    const { gradeLevel, schoolYear } = req.query;
+    // Pega o ID se estiver logado, senão null
+    const userId = (req.user && req.user.uid) ? req.user.uid : null;
+
+    console.log("\n=== DEBUG PLANOS (Modo Compatibilidade) ===");
+    console.log("Professor:", userId || "NÃO LOGADO");
+
+    // 1. BUSCA TUDO (Sem filtro no banco para pegar os antigos também)
+    // Nota: Em produção com muitos dados, isso seria lento, mas para dev é perfeito.
+    const snapshot = await db.collection('plans').get();
+    
+    if (snapshot.empty) {
+        return res.status(200).json([]);
+    }
+
+    // 2. FILTRAGEM INTELIGENTE EM MEMÓRIA
+    let plans = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(p => {
+            // A REGRA DE OURO:
+            // Mostra o plano se:
+            // a) Ele é MEU (tem meu teacherId)
+            // b) OU se ele é "ANÔNIMO" (não tem teacherId nenhum - planos antigos)
+            return p.teacherId === userId || !p.teacherId;
+        });
+
+    console.log(`Encontrados ${plans.length} planos visíveis.`);
+
+    // 3. APLICA OS FILTROS DE PESQUISA (Se houver)
+    if (schoolYear) {
+        plans = plans.filter(p => p.schoolYear === schoolYear);
+    } 
+    else if (gradeLevel) {
+        const termo = gradeLevel.toLowerCase().trim();
+        plans = plans.filter(p => {
+            const dados = [p.gradeLevel, p.educationLevel, p.schoolYear].filter(Boolean).join(" ").toLowerCase();
+            return dados.includes(termo);
+        });
+    }
+
+    // Ordena (Mais novos primeiro)
+    plans.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.status(200).json(plans);
+
+  } catch (error) {
+    console.error('ERRO NO GET PLANS:', error);
+    res.status(500).json({ error: 'Erro interno.' });
+  }
+};
   
   export const getPlanById = async (req, res) => {
     const doc = await db.collection('plans').doc(req.params.id).get();
@@ -41,10 +69,17 @@ export const getPlans = async (req, res) => {
     res.status(200).json({ id: doc.id, ...doc.data() });
   };
   
-  export const deletePlan = async (req, res) => {
-    await db.collection('plans').doc(req.params.id).delete();
-    res.status(200).json({ message: "Deletado." });
-  };
+ export const deletePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.collection('plans').doc(id).delete();
+    // (Opcional: Deletar arquivo do Cloudinary aqui também, se quiser)
+    res.json({ message: "Plano deletado com sucesso" });
+  } catch (error) {
+    console.error("Erro deletePlan:", error);
+    res.status(500).json({ error: "Erro ao deletar plano" });
+  }
+};
 
 // --- CREATE PLAN ---
 export const createPlan = async (req, res) => {
