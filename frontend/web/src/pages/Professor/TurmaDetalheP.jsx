@@ -11,8 +11,9 @@ export default function TurmaDetalheP() {
   const [activeTab, setActiveTab] = useState("alunos"); 
   const [listaDados, setListaDados] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Carrega Turma
+  const [viewingItem, setViewingItem] = useState(null);
+
+  // 1. Carrega Dados da Turma
   useEffect(() => {
     async function loadTurma() {
       try {
@@ -26,7 +27,7 @@ export default function TurmaDetalheP() {
     loadTurma();
   }, [id, navigate]);
 
-  // Carrega Listas da Turma
+  // 2. Carrega Conteúdos (Ao mudar aba ou turma)
   useEffect(() => {
     if (!turma) return;
     fetchLista();
@@ -34,33 +35,54 @@ export default function TurmaDetalheP() {
 
   const fetchLista = async () => {
     setLoading(true);
+    const cacheBuster = `?t=${new Date().getTime()}`; // Evita cache
+
     try {
       if (activeTab === "alunos") {
         const response = await api.get(`/api/users?role=student&classId=${id}`);
         setListaDados(response.data);
       } else {
-        // Lógica de Conteúdos (APENAS MATERIAIS, SEM PLANOS)
+        // --- LÓGICA DE CONTEÚDOS ---
         let serieBusca = turma.gradeLevel; 
         const match = turma.name.match(/(\d+º?\s?(Ano|Série|Serie))/i);
         if (match) serieBusca = match[0];
 
-        const allContents = await api.get(`/api/contents`); 
-        // Removida a chamada para /api/plans
+        console.log(`[DEBUG] Buscando materiais para Série: ${serieBusca} | Turma ID: ${id}`);
 
-        // Filtra CONTEÚDOS
-        const contents = allContents.data.filter(c => 
-            c.classId === id || 
-            c.gradeLevel === serieBusca ||
-            c.gradeLevel === turma.gradeLevel
-        );
+        const allContents = await api.get(`/api/contents${cacheBuster}`); 
         
-        // Marca visualmente
-        const processedContents = contents.map(c => ({
-            ...c,
-            originType: c.classId === id ? 'Exclusivo' : 'Geral da Série'
-        }));
+        // Filtra apenas os materiais relevantes
+        const contents = allContents.data.filter(c => {
+            // Se for exclusivo desta turma
+            if (c.classId === id) return true;
+            
+            // Se for geral da série (E não tiver turma específica)
+            // Normaliza strings para evitar erro de espaço/acento
+            const cGrade = c.gradeLevel ? c.gradeLevel.trim() : "";
+            const tGrade = turma.gradeLevel ? turma.gradeLevel.trim() : "";
+            
+            const isGeneral = !c.classId || c.classId === 'null';
+            const matchGrade = cGrade === serieBusca || cGrade === tGrade;
 
-        setListaDados(processedContents); // Salva APENAS conteúdos
+            return isGeneral && matchGrade;
+        });
+
+        // Processa e VALIDA os itens (Remove sem ID)
+        const validContents = contents
+            .map(c => ({
+                ...c,
+                originType: c.classId === id ? 'Exclusivo' : 'Geral da Série'
+            }))
+            .filter(item => {
+                if (!item.id) {
+                    console.warn("⚠️ Item ignorado (Sem ID):", item);
+                    return false;
+                }
+                return true;
+            });
+
+        console.log(`[DEBUG] Itens Válidos Encontrados: ${validContents.length}`);
+        setListaDados(validContents);
       }
     } catch (error) {
       console.error("Erro ao buscar lista:", error);
@@ -69,11 +91,12 @@ export default function TurmaDetalheP() {
     }
   };
 
+  // --- AÇÕES ---
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("Máximo 5MB."); return; }
-
+    
     const formData = new FormData();
     formData.append("classId", id); 
     formData.append("name", file.name);
@@ -81,9 +104,7 @@ export default function TurmaDetalheP() {
     formData.append("file", file);
 
     try {
-      await api.post("/api/contents/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      await api.post("/api/contents/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
       alert("Arquivo enviado!");
       fetchLista();
     } catch (error) {
@@ -92,16 +113,24 @@ export default function TurmaDetalheP() {
   };
 
   const handleDelete = async (itemId) => {
+    if (!itemId) return alert("Erro: ID do item inválido.");
     if(!confirm("Remover este item?")) return;
+    
     try {
         await api.delete(`/api/contents/${itemId}`);
-        fetchLista();
-    } catch(e) { alert("Erro ao remover."); }
+        fetchLista(); // Recarrega a lista
+    } catch(e) { 
+        console.error(e);
+        alert("Erro ao remover."); 
+    }
   };
 
-  // Função para abrir PDF em nova aba (Mais robusto)
-  const openPdf = (url) => {
-    window.open(url, '_blank', 'noopener,noreferrer');
+  const openPdfInNewTab = (url) => {
+      window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const getPdfViewerUrl = (url) => {
+    return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
   };
 
   if (!turma) return <div className="loading-screen">Carregando...</div>;
@@ -161,7 +190,7 @@ export default function TurmaDetalheP() {
 
           <div className="data-container">
             {loading ? <div className="loading-state"><span className="material-symbols-rounded spinning">progress_activity</span><p>Carregando...</p></div> : 
-             listaDados.length === 0 ? <div className="empty-state-web"><span className="material-symbols-rounded">folder_open</span><p>Nenhum conteúdo encontrado (Geral ou da Turma).</p></div> : (
+             listaDados.length === 0 ? <div className="empty-state-web"><span className="material-symbols-rounded">folder_open</span><p>Nenhum conteúdo encontrado.</p></div> : (
               <>
                 {activeTab === "alunos" && (
                   <table className="web-table">
@@ -173,22 +202,28 @@ export default function TurmaDetalheP() {
                 {activeTab === "conteudo" && (
                   <div className="contents-grid">
                     {listaDados.map(item => (
-                      <div key={item.id} className={`content-card-web ${item.originType === 'Exclusivo' ? 'specific' : 'general'}`}>
+                      <div key={item.id || Math.random()} className={`content-card-web ${item.originType === 'Exclusivo' ? 'specific' : 'general'}`}>
                         <div className={`file-icon ${item.url ? 'pdf' : 'text'}`}>
                           <span className="material-symbols-rounded">
                             {item.url ? 'picture_as_pdf' : 'article'}
                           </span>
                         </div>
                         <div className="file-details">
-                          <h4>{item.name}</h4>
+                          <h4>{item.name || "Sem Título"}</h4>
                           <span className="origin-tag">{item.originType}</span>
                         </div>
                         <div className="file-actions">
-                            {/* BOTÃO VER: Abre direto se for PDF, ou Modal se for texto */}
-                            <button className="action-link" onClick={() => item.url ? openPdf(item.url) : alert("Texto (IA) - Use a tela de Conteúdos para ver.")} title="Ver">
+                            <button className="action-link" onClick={() => setViewingItem(item)} title="Ver">
                                 <span className="material-symbols-rounded">visibility</span>
                             </button>
-                            <button className="action-link delete" onClick={() => handleDelete(item.id)}>
+                            
+                            {/* Botão Delete BLINDADO */}
+                            <button 
+                                className="action-link delete" 
+                                onClick={() => item.id ? handleDelete(item.id) : alert("Erro: Item sem ID.")}
+                                title="Excluir"
+                                style={{ opacity: item.id ? 1 : 0.3 }}
+                            >
                                 <span className="material-symbols-rounded">delete</span>
                             </button>
                         </div>
@@ -201,6 +236,32 @@ export default function TurmaDetalheP() {
           </div>
         </main>
       </div>
+
+      {/* MODAL VISUALIZAÇÃO */}
+      {viewingItem && (
+        <div className="modal-overlay">
+          <div className="modal-box x-large">
+            <div className="modal-header">
+                <h3 style={{flex: 1}}>{viewingItem.name}</h3>
+                <div className="header-controls">
+                    {viewingItem.type !== 'text' && (
+                        <button className="btn-open-external-header" onClick={() => openPdfInNewTab(viewingItem.url)}>
+                            <span className="material-symbols-rounded">open_in_new</span> Abrir em Nova Aba
+                        </button>
+                    )}
+                    <button onClick={() => setViewingItem(null)} className="close-btn">✕</button>
+                </div>
+            </div>
+            <div className="modal-body view-mode">
+                {viewingItem.type === 'text' ? (
+                    <div className="text-content" dangerouslySetInnerHTML={{ __html: viewingItem.content }} />
+                ) : (
+                    <iframe src={getPdfViewerUrl(viewingItem.url)} className="pdf-frame-full" title="Visualizador"></iframe>
+                )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

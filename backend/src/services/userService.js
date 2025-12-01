@@ -28,7 +28,9 @@ const userService = {
    * @description Criar usuário (individual ou via lote)
    */
   async createUser(data) {
-    const { email, displayName, role, dateOfBirth, gradeLevel, schoolYear } = data;
+    // GARANTIA DE DADOS:
+    // Vamos garantir que gradeLevel e schoolYear não se misturem.
+    const { email, password, displayName, role, dateOfBirth, gradeLevel, schoolYear } = data;
     
     const isStudent = (role === 'student');
     
@@ -36,13 +38,11 @@ const userService = {
     let finalUsername;
     let finalEmail = email;
 
-    // Regras de Username/Email/Senha
     if (isStudent) {
       finalUsername = data.username || gerarUsername(displayName);
       finalEmail = `${finalUsername}@studyup.com`;
       finalPassword = gerarSenhaProvisoria();
     } else {
-      // Professor
       finalUsername = email;
       if (!finalPassword) finalPassword = gerarSenhaProfessor();
     }
@@ -51,7 +51,6 @@ const userService = {
     let isUnique = false;
     let counter = 1;
 
-    // Loop para garantir unicidade no Auth (ex: joao.silva1, joao.silva2)
     while (!isUnique) {
       try {
         userRecord = await admin.auth().createUser({
@@ -69,23 +68,23 @@ const userService = {
       }
     }
     
-    // Salva no Firestore
+    // SALVANDO NO FIRESTORE
     await db.collection("users").doc(userRecord.uid).set({
       displayName,
       email: finalEmail,
       username: finalUsername,
       role,
-      // Campos opcionais de Aluno
       dateOfBirth: dateOfBirth || null,
-      gradeLevel: gradeLevel || null,
-      schoolYear: schoolYear || null, // Ano/Série (ex: 9º Ano)
+      
+      // CORREÇÃO AQUI: Garante que salvamos o que veio do form
+      gradeLevel: gradeLevel || null, // Deve ser "Fundamental 2"
+      schoolYear: schoolYear || null, // Deve ser "9º Ano"
       
       points: 0,
       uid: userRecord.uid,
       createdAt: new Date().toISOString(),
-      
       isActive: true, 
-      needsPasswordChange: true // Força troca de senha
+      needsPasswordChange: true 
     });
 
     return { 

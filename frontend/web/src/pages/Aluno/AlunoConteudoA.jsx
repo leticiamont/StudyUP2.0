@@ -25,14 +25,14 @@ export default function AlunoConteudoA() {
   const fetchContents = async (userData) => {
     setLoading(true);
     try {
+      // 🚨 CORREÇÃO: Envia classId E gradeLevel juntos para a busca híbrida
       let endpoint = `/api/contents?`;
       const params = [];
       
-      // Envia SEMPRE o classId se tiver (é o mais importante)
       if (userData.classId) {
           params.push(`classId=${userData.classId}`);
       } 
-      // Envia gradeLevel como backup
+      // Sempre manda o nível se tiver, para pegar os gerais
       if (userData.gradeLevel) {
           params.push(`gradeLevel=${encodeURIComponent(userData.gradeLevel)}`);
       }
@@ -51,16 +51,21 @@ export default function AlunoConteudoA() {
     } catch (error) { console.error("Erro:", error); } 
     finally { setLoading(false); }
   };
-  
+
   const handleLogout = async () => {
     if (window.confirm("Sair?")) {
-      await signOut(auth); localStorage.removeItem("token"); navigate("/");
+      await signOut(auth); localStorage.removeItem("token"); localStorage.removeItem("userData"); navigate("/");
     }
   };
 
+  // Função de abrir (com suporte a PDF em nova aba)
   const handleOpenActivity = (item) => {
-    if (item.type === 'text') setViewingContent(item);
-    else window.open(item.url, '_blank');
+    if (item.type === 'text') {
+      setViewingContent(item);
+    } else {
+      // Abre PDF direto em nova aba
+      window.open(item.url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const modules = [
@@ -76,11 +81,8 @@ export default function AlunoConteudoA() {
             <div onClick={() => navigate('/dashboardA')} className="s-nav-item"><span className="material-symbols-rounded">home</span> Início</div>
             <div onClick={() => navigate('/aluno/conteudo')} className="s-nav-item active"><span className="material-symbols-rounded">book</span> Aulas</div>
             <div onClick={() => navigate('/aluno/ide')} className="s-nav-item"><span className="material-symbols-rounded">terminal</span> IDE Python</div>
-            
-            {/* 🚨 CORREÇÃO DE NAVEGAÇÃO JOGOS */}
             <div onClick={() => navigate('/aluno/jogos')} className="s-nav-item"><span className="material-symbols-rounded">sports_esports</span> Jogos</div>
-            
-            <div className="s-nav-item"><span className="material-symbols-rounded">forum</span> Fórum</div>
+            <div onClick={() => navigate('/aluno/forum')} className="s-nav-item"><span className="material-symbols-rounded">forum</span> Fórum</div>
         </nav>
         <button className="btn-logout" onClick={handleLogout}><span className="material-symbols-rounded">logout</span> Sair</button>
       </aside>
@@ -104,13 +106,20 @@ export default function AlunoConteudoA() {
 
         <section className="activities-list-section">
             <h3 className="section-label">Conteúdo do Módulo {activeModule}</h3>
-            {loading ? <p>Carregando...</p> : contents.length === 0 ? <div className="empty-state-student"><p>Nenhuma aula.</p></div> : (
+            {loading ? <p>Carregando...</p> : contents.length === 0 ? <div className="empty-state-student"><p>Nenhuma aula encontrada para sua turma.</p></div> : (
                 <div className="activities-grid">
                     {contents.map((item) => (
                         <div key={item.id} className="activity-card" onClick={() => handleOpenActivity(item)}>
                             <div className="act-left">
-                                <div className={`act-icon ${item.type === 'text' ? 'blue' : 'pink'}`}><span className="material-symbols-rounded">{item.type === 'text' ? 'menu_book' : 'picture_as_pdf'}</span></div>
-                                <div className="act-info"><h4>{item.name}</h4><span>{item.type === 'text' ? 'Leitura' : 'PDF'}</span></div>
+                                <div className={`act-icon ${item.type === 'text' ? 'blue' : 'pink'}`}>
+                                    <span className="material-symbols-rounded">{item.type === 'text' ? 'menu_book' : 'picture_as_pdf'}</span>
+                                </div>
+                                <div className="act-info">
+                                    <h4>{item.name}</h4>
+                                    <span>{item.type === 'text' ? 'Leitura' : 'PDF'}</span>
+                                    {/* Tag para diferenciar origem (opcional) */}
+                                    {item.classId && <span className="tag-origin">Da Turma</span>}
+                                </div>
                             </div>
                             <span className="material-symbols-rounded arrow-act">chevron_right</span>
                         </div>

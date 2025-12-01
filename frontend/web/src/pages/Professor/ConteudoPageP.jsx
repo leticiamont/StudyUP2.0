@@ -64,66 +64,69 @@ export default function ConteudoPageP() {
     loadContents(level);
   };
 
+  // 2. Carregar Conteúdos (AJUSTADO)
   const loadContents = async (level) => {
     setLoading(true);
     try {
       const [plansRes, contentsRes, classesRes] = await Promise.all([
         api.get(`/api/plans`),
-        api.get(`/api/contents`),
+        // Busca TUDO do professor nesse nível (depois filtramos por ano escolar no front)
+        api.get(`/api/contents?gradeLevel=${level}`), 
         api.get(`/api/classes`)
       ]);
 
-      // Descobre quais séries o professor tem neste nível
+      // ... (Lógica de extrair séries igual)
       const myClassesInLevel = classesRes.data.filter(c => c.teacherId === teacherId && c.gradeLevel === level);
       const uniqueSeries = new Set();
-      
       myClassesInLevel.forEach(cls => {
-        // Tenta extrair "3º Ano" do nome "3º Ano A"
         const match = cls.name.match(/(\d+º?\s?(Ano|Série|Serie))/i);
-        if (match) uniqueSeries.add(match[0]);
-        else uniqueSeries.add(cls.name);
+        if (match) uniqueSeries.add(match[0]); else uniqueSeries.add(cls.name);
       });
-
-      // Se não achar séries (ex: curso único), usa o nome do nível
       if (uniqueSeries.size === 0) uniqueSeries.add(level);
-
       const seriesArray = Array.from(uniqueSeries).sort();
+      
       const grouped = {};
 
-      // Agrupa Planos e Conteúdos por Série
       seriesArray.forEach(serieName => {
-        // Plano: Tenta achar plano específico da série ou geral do nível
         const plan = plansRes.data.find(p => p.gradeLevel === level && (p.name.includes(serieName) || seriesArray.length === 1)) || null;
         
-        // Conteúdo: Filtra exato pela série
-        const contents = contentsRes.data.filter(c => c.teacherId === teacherId && c.gradeLevel === serieName);
-        
+        // 🚨 FILTRO NOVO: Verifica schoolYear OU legacy (gradeLevel == serieName)
+        const contents = contentsRes.data.filter(c => {
+            const isSameTeacher = c.teacherId === teacherId;
+            // Compatibilidade: Novos usam schoolYear, Antigos usavam gradeLevel como série
+            const matchSeries = c.schoolYear === serieName || c.gradeLevel === serieName;
+            return isSameTeacher && matchSeries;
+        });
+
         grouped[serieName] = { plan, contents };
       });
 
       setSeriesData(grouped);
-
-      // Seleciona a primeira série automaticamente se nenhuma estiver selecionada
-      if (seriesArray.length > 0 && !activeSerie) {
-        setActiveSerie(seriesArray[0]);
-      } else if (seriesArray.length > 0 && !seriesArray.includes(activeSerie)) {
-        setActiveSerie(seriesArray[0]);
+      // ... (Seleção de activeSerie igual)
+      if (seriesArray.length > 0) {
+        if (!activeSerie || !seriesArray.includes(activeSerie)) {
+            setActiveSerie(seriesArray[0]);
+        }
       }
 
-    } catch (error) { console.error(error); } 
+    } catch (error) { console.error("Erro:", error); } 
     finally { setLoading(false); }
   };
 
-  // --- AÇÕES ---
+  // --- AÇÕES DE SALVAR (COM O NOVO CAMPO) ---
 
   const handleUpload = async (e) => {
+    if (!activeSerie) { alert("Selecione uma série."); return; }
     const file = e.target.files[0];
     if (!file) return;
     
     const formData = new FormData();
     formData.append("file", file);
     formData.append("name", file.name);
-    formData.append("gradeLevel", activeSerie); // Salva na série ativa da direita
+    
+    // 🚨 SALVA CORRETAMENTE AGORA
+    formData.append("gradeLevel", selectedLevel); // Ex: "Ensino Médio"
+    formData.append("schoolYear", activeSerie);   // Ex: "3º Ano"
 
     try {
       await api.post("/api/contents/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
@@ -133,18 +136,27 @@ export default function ConteudoPageP() {
   };
 
   const handleSaveIA = async () => {
-    try {
-      await api.post("/api/contents", {
+    if (!activeSerie) { alert("Selecione uma série."); return; }
+    if (!iaResponse.trim()) { alert("Gere o conteúdo."); return; }
+
+    const payload = {
         name: `IA: ${iaPrompt.substring(0, 20)}...`,
         content: iaResponse,
         type: "text",
-        gradeLevel: activeSerie
-      });
+        
+        // 🚨 SALVA CORRETAMENTE AGORA
+        gradeLevel: selectedLevel, // Ex: "Ensino Médio"
+        schoolYear: activeSerie    // Ex: "3º Ano"
+    };
+    
+    try {
+      await api.post("/api/contents", payload);
       alert("Salvo!");
       setShowIAModal(false);
       loadContents(selectedLevel);
     } catch (error) { alert("Erro ao salvar."); }
   };
+  
 
   const handleGenerateIA = async () => {
     if(!iaPrompt.trim()) return;
