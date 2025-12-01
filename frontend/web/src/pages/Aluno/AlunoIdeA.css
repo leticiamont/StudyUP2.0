@@ -1,110 +1,222 @@
-/* Layout da Página IDE */
+/* Importando Poppins se ainda não estiver no projeto global */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
 .ide-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   padding: 20px;
-  background-color: #1E1E24; /* Fundo escuro para imersão */
+  background-color: #1E1E24;
   height: 100vh;
   overflow: hidden;
+  font-family: 'Roboto', sans-serif;
 }
 
-/* Header */
+/* HEADER */
 .ide-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 20px; padding: 0 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px 5px;
+  border-bottom: 1px solid #333;
 }
 
-.ide-title { display: flex; align-items: center; gap: 10px; }
+.ide-header-left { display: flex; align-items: center; gap: 12px; }
 .python-icon { color: #FFC107; font-size: 32px; }
-.ide-title h1 { color: white; font-size: 22px; margin: 0; font-family: 'Fira Code', monospace; }
+
+/* 🚨 FONTE ALTERADA PARA POPPINS */
+.ide-header-left h1 {
+  color: white;
+  font-size: 22px;
+  margin: 0;
+  font-family: 'Poppins', sans-serif; /* Fonte nova */
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* MOSTRADOR DE XP NA IDE */
+.ide-xp-display {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #FFC107;
+  font-weight: bold;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: auto; /* Empurra para a esquerda, perto do título */
+  margin-left: 20px;
+}
 
 .ide-actions { display: flex; gap: 15px; }
 
-.btn-run {
-  background-color: #4CAF50; color: white;
-  border: none; padding: 10px 25px; border-radius: 8px;
-  font-weight: 700; display: flex; align-items: center; gap: 8px;
-  cursor: pointer; transition: 0.2s; font-size: 14px;
-}
-.btn-run:hover { background-color: #43A047; box-shadow: 0 0 15px rgba(76, 175, 80, 0.4); }
-.btn-run:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; }
-
-.btn-hint {
+.btn-hint-mobile {
   background-color: #FFC107; color: #3e2723;
-  border: none; padding: 10px 20px; border-radius: 8px;
-  font-weight: 700; display: flex; align-items: center; gap: 8px;
-  cursor: pointer; transition: 0.2s; font-size: 14px;
+  border: none; padding: 8px 20px; border-radius: 8px;
+  font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s;
+  font-family: 'Poppins', sans-serif;
 }
-.btn-hint:hover { background-color: #FFD54F; }
+.btn-hint-mobile:hover { background-color: #FFD54F; transform: translateY(-1px); }
 
-/* Workspace (Split) */
+.btn-run-mobile {
+  background-color: #4CAF50; color: white;
+  border: none; padding: 8px 25px; border-radius: 8px;
+  font-weight: 700; font-size: 13px;
+  display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s;
+  font-family: 'Poppins', sans-serif;
+}
+.btn-run-mobile:hover { background-color: #43A047; box-shadow: 0 0 10px rgba(76, 175, 80, 0.3); }
+.btn-run-mobile:disabled { background-color: #555; cursor: not-allowed; box-shadow: none; }
+
+/* WORKSPACE */
 .ide-workspace {
   flex: 1;
   display: grid;
-  grid-template-columns: 60% 40%; /* Editor maior que terminal */
-  gap: 15px;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
   height: 100%;
-  overflow: hidden; /* Impede scroll da página inteira */
+  overflow: hidden;
 }
 
-/* Painéis (Editor e Terminal) */
 .editor-pane, .terminal-pane {
-  background-color: #282A36; /* Cor Dracula */
-  border-radius: 12px;
-  display: flex; flex-direction: column;
-  overflow: hidden;
-  border: 1px solid #444;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  background-color: #282A36; border-radius: 12px;
+  display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid #444; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
 }
 
 .pane-header {
-  background-color: #191A21;
-  color: #999;
-  padding: 10px 20px;
-  font-size: 12px;
-  font-weight: bold;
-  text-transform: uppercase;
-  border-bottom: 1px solid #444;
-  display: flex; align-items: center;
+  background-color: #191A21; color: #8BE9FD;
+  padding: 10px 15px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; border-bottom: 1px solid #444;
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: 'Poppins', sans-serif;
 }
 
-/* CodeMirror Customização */
 .code-wrapper { flex: 1; overflow: hidden; }
 .codemirror-custom { height: 100%; font-size: 16px; }
-.cm-scroller { font-family: 'Fira Code', 'Consolas', monospace; }
 
-/* Terminal Output */
 .terminal-output {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;
+  flex: 1; padding: 20px; overflow-y: auto;
   font-family: 'Fira Code', 'Consolas', monospace;
-  color: #50FA7B; /* Verde Terminal */
+  color: #50FA7B; font-size: 14px; white-space: pre-wrap;
+}
+
+/* MODAL DICA */
+.student-modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 2000;
+}
+.hint-modal-design { width: 500px; height: auto; border-radius: 16px; overflow: hidden; background-color: white; }
+
+.hint-modal-header {
+  display: flex; align-items: center; gap: 10px; padding: 20px 25px;
+  background-color: #FFF8E1; border-bottom: 1px solid #FFE082;
+}
+.hint-bulb-icon { color: #FFC107; font-size: 28px; }
+.hint-modal-header h3 { margin: 0; flex: 1; font-size: 18px; color: #333; font-family: 'Poppins', sans-serif; }
+.close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #555; }
+
+.hint-modal-body { padding: 30px; min-height: 120px; display: flex; align-items: center; justify-content: center; }
+.hint-text-content { font-size: 16px; line-height: 1.6; color: #333; text-align: center; font-family: 'Roboto', sans-serif; }
+
+.loading-hint { text-align: center; color: #1154D9; font-weight: 600; }
+.spinner-blue { border: 4px solid #E3F2FD; border-top: 4px solid #1154D9; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px auto; }
+
+.hint-modal-footer { background-color: #f9f9f9; padding: 15px 25px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.xp-info { font-size: 12px; color: #888; font-style: italic; }
+
+.btn-finish-hint { background-color: #333; color: white; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 13px; }
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* --- MODAL DE COMPRA (NOVO) --- */
+.purchase-modal-design {
+  width: 400px;
+  height: auto;
+  background-color: white;
+  border-radius: 16px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.purchase-header {
+  padding: 25px 20px 10px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.lock-icon-large {
+  font-size: 48px;
+  color: #FFC107;
+  background-color: #FFF8E1;
+  padding: 15px;
+  border-radius: 50%;
+}
+
+.purchase-header h3 {
+  margin: 0;
+  font-size: 20px;
+  color: #333;
+}
+
+.purchase-body {
+  padding: 10px 30px 30px 30px;
+  color: #666;
   font-size: 15px;
-  white-space: pre-wrap; /* Mantém quebras de linha do Python */
 }
 
-/* Modal de Dica */
-.hint-text { font-size: 16px; line-height: 1.6; color: #333; }
-.hint-icon { color: #FFC107; font-size: 24px; margin-right: 10px; }
-.ide-content {
-  flex: 1; display: flex; flex-direction: column; padding: 20px; background-color: #1E1E24; height: 100vh; overflow: hidden;
+.purchase-price {
+  font-size: 18px;
+  margin: 15px 0 5px 0;
+  color: #333;
 }
-.ide-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 10px; }
-.ide-title { display: flex; align-items: center; gap: 10px; }
-.python-icon { color: #FFC107; font-size: 32px; }
-.ide-title h1 { color: white; font-size: 22px; margin: 0; font-family: 'monospace'; }
+.purchase-price strong { color: #FF5722; }
 
-.ide-actions { display: flex; gap: 15px; }
-.btn-run { background-color: #4CAF50; color: white; border: none; padding: 10px 25px; border-radius: 8px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; }
-.btn-run:hover { background-color: #43A047; }
-.btn-hint { background-color: #FFC107; color: #3e2723; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; }
+.user-balance {
+  font-size: 13px;
+  color: #888;
+  margin: 0;
+}
 
-.ide-workspace { flex: 1; display: grid; grid-template-columns: 60% 40%; gap: 15px; height: 100%; overflow: hidden; }
-.editor-pane, .terminal-pane { background-color: #282A36; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #444; }
-.pane-header { background-color: #191A21; color: #999; padding: 10px 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #444; }
-.code-wrapper { flex: 1; overflow: hidden; }
-.codemirror-custom { height: 100%; font-size: 16px; }
-.terminal-output { flex: 1; padding: 20px; overflow-y: auto; font-family: 'monospace'; color: #50FA7B; font-size: 15px; white-space: pre-wrap; }
-.hint-text { font-size: 16px; line-height: 1.6; color: #333; padding: 20px; }
+.purchase-footer {
+  background-color: #f9f9f9;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  border-top: 1px solid #eee;
+}
+
+.btn-cancel-purchase {
+  background-color: white;
+  border: 1px solid #ccc;
+  color: #555;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.btn-cancel-purchase:hover { background-color: #f0f0f0; }
+
+.btn-confirm-purchase {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 25px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+  transition: 0.2s;
+}
+.btn-confirm-purchase:hover { background-color: #43A047; transform: translateY(-2px); }
+

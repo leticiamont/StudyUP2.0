@@ -7,20 +7,44 @@ import "./AlunoJogosA.css";
 export default function AlunoJogosA() {
   const navigate = useNavigate();
   const auth = getAuth();
+  
   const [user, setUser] = useState({ displayName: "Aluno", points: 0 });
   const [levels, setLevels] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Ícones e Cores para as fases
   const ICONS = ['egg', 'star', 'emoji_events', 'local_fire_department', 'bolt', 'sports_esports'];
   const COLORS = ['#FFC107', '#FF9800', '#1154D9', '#4CAF50', '#9C27B0', '#E91E63'];
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("userData") || "{}");
     if (storedUser.uid) {
+        // 1. Carrega dados do cache para mostrar rápido
         setUser(prev => ({ ...prev, ...storedUser }));
+        
+        // 2. Busca Níveis
         fetchLevels(storedUser);
+
+        // 3. 🚨 IMPORTANTE: Busca dados frescos do usuário (Pontos atualizados)
+        fetchUserData(storedUser.uid);
     }
   }, []);
+
+  // Nova função para atualizar os pontos
+  const fetchUserData = async (uid) => {
+    try {
+        const response = await api.get(`/api/users/${uid}`);
+        const dadosAtualizados = response.data;
+        
+        // Atualiza estado e cache
+        setUser(dadosAtualizados);
+        localStorage.setItem("userData", JSON.stringify(dadosAtualizados));
+        
+        console.log("Pontos atualizados:", dadosAtualizados.points);
+    } catch (error) {
+        console.error("Erro ao atualizar perfil:", error);
+    }
+  };
 
   const fetchLevels = async (userData) => {
     setLoading(true);
@@ -78,7 +102,11 @@ export default function AlunoJogosA() {
       <main className="student-content game-bg">
         
         <header className="student-header-clean">
-           <div className="xp-pill"><span className="material-symbols-rounded xp-star">star</span><span className="xp-value">{user.points || 0}</span></div>
+           <div className="xp-pill">
+              <span className="material-symbols-rounded xp-star">star</span>
+              {/* Mostra os pontos atualizados */}
+              <span className="xp-value">{user.points || 0}</span>
+           </div>
            <div className="profile-circle"><span className="material-symbols-rounded">account_circle</span></div>
         </header>
 
@@ -93,7 +121,6 @@ export default function AlunoJogosA() {
                     {levels.map((level, index) => (
                         <div key={level.id} className={`level-node ${index % 2 === 0 ? 'left' : 'right'}`}>
                             
-                            {/* Linha Conectora (Exceto no último) */}
                             {index < levels.length - 1 && <div className="path-line"></div>}
 
                             <div 

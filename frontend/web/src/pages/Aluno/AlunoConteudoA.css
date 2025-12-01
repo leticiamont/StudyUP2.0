@@ -1,137 +1,76 @@
-/* Reaproveita layout base do aluno */
-.student-container { display: flex; height: 100vh; background-color: #F8FAFC; font-family: 'Roboto', sans-serif; }
-.student-content { flex: 1; padding: 30px 50px; overflow-y: auto; }
-
-/* Header Simples */
-.student-header-simple { margin-bottom: 30px; }
-.student-header-simple h1 { margin: 0; color: #1F2937; font-size: 28px; }
-.header-subtitle { color: #6B7280; font-size: 16px; }
-
-/* TRILHA DE MÓDULOS (Horizontal Scroll) */
-.modules-track {
-  display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px;
-  /* Esconde scrollbar mas permite scroll */
-  scrollbar-width: none;
-}
-.modules-track::-webkit-scrollbar { display: none; }
-
-.module-card {
-  min-width: 200px; height: 140px;
-  border-radius: 16px; padding: 20px;
-  background-color: var(--mod-color);
-  color: white;
-  display: flex; flex-direction: column; justify-content: space-between;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  cursor: pointer; transition: 0.2s;
-  position: relative; overflow: hidden;
-}
-
-.module-card.active { border: 3px solid #333; transform: translateY(-2px); }
-.module-card.locked { cursor: default; opacity: 0.8; }
-
-.mod-top { display: flex; justify-content: space-between; align-items: center; }
-.mod-title { font-weight: 800; font-size: 16px; }
-.star-icon { color: #FFC107; }
-.lock-icon { color: #E5E7EB; opacity: 0.5; }
-
-.mod-sub { font-size: 12px; opacity: 0.9; }
-
-.mod-progress-bar { width: 100%; height: 6px; background-color: rgba(0,0,0,0.2); border-radius: 3px; overflow: hidden; }
-.mod-progress-fill { height: 100%; background-color: #B2FF59; }
-
-.mod-count { font-size: 11px; font-weight: 700; text-transform: uppercase; margin-top: 5px; }
-
-
-/* LISTA DE ATIVIDADES */
-.section-label { font-size: 18px; color: #374151; margin-bottom: 20px; font-weight: 700; }
-
-.activities-grid { display: flex; flex-direction: column; gap: 15px; }
-
-.activity-card {
-  background: white; border-radius: 16px; padding: 20px;
-  display: flex; align-items: center; justify-content: space-between;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #F3F4F6;
-  cursor: pointer; transition: 0.2s;
-}
-.activity-card:hover { border-color: #1154D9; transform: translateX(5px); }
-
-.act-left { display: flex; align-items: center; gap: 20px; }
-
-.act-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justifyContent: center; }
-.act-icon.blue { background-color: #E3F2FD; color: #1154D9; }
-.act-icon.pink { background-color: #FCE4EC; color: #E91E63; }
-
-.act-info h4 { margin: 0 0 4px 0; color: #1F2937; font-size: 16px; }
-.act-info span { font-size: 13px; color: #9CA3AF; }
-
-.arrow-act { color: #D1D5DB; font-size: 28px; }
-
-.empty-state-student { text-align: center; padding: 50px 0; color: #9CA3AF; }
-.empty-state-student span { font-size: 48px; display: block; margin-bottom: 10px; }
-
-
-/* MODAL DE LEITURA */
-.student-modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;
-}
-.student-modal-box {
-  background: white; width: 800px; max-width: 90vw; height: 80vh;
-  border-radius: 20px; overflow: hidden; display: flex; flex-direction: column;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-}
-
-.student-modal-header {
-  padding: 20px 30px; background: #F9FAFB; border-bottom: 1px solid #E5E7EB;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.student-modal-header h3 { margin: 0; color: #111827; font-size: 20px; }
-
-.student-modal-body {
-  padding: 40px; overflow-y: auto; flex: 1; background: white;
-}
-.text-reader { font-size: 18px; line-height: 1.8; color: #374151; }
-
-.student-modal-footer {
-  padding: 20px 30px; background: #F9FAFB; border-top: 1px solid #E5E7EB; text-align: right;
-}
-.btn-finish {
-  background-color: #1154D9; color: white; border: none; padding: 12px 30px;
-  border-radius: 30px; font-weight: 700; cursor: pointer; font-size: 14px;
-  transition: 0.2s;
-}
-.btn-finish:hover { background-color: #0D47A1; transform: scale(1.05); }
 /* Reaproveita layout base */
 .student-container { display: flex; height: 100vh; background-color: #F8FAFC; font-family: 'Roboto', sans-serif; }
 .student-content { flex: 1; padding: 30px 50px; overflow-y: auto; }
 
 /* Header Simples */
-.student-header-simple { margin-bottom: 30px; }
+.student-header-simple { margin-bottom: 20px; }
 .student-header-simple h1 { margin: 0; color: #1F2937; font-size: 28px; }
 .header-subtitle { color: #6B7280; font-size: 16px; }
 
-/* TRILHA DE MÓDULOS */
-.modules-track { display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; scrollbar-width: none; }
-.module-card { min-width: 200px; height: 140px; border-radius: 16px; padding: 20px; background-color: var(--mod-color); color: white; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; transition: 0.2s; }
-.module-card:hover { transform: translateY(-3px); }
-.module-card.locked { opacity: 0.5; cursor: default; }
-.mod-top { display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
-.mod-progress-bar { width: 100%; height: 6px; background: rgba(0,0,0,0.2); border-radius: 3px; overflow: hidden; }
-.mod-progress-fill { height: 100%; background: #B2FF59; }
-.mod-count { font-size: 11px; font-weight: 700; text-transform: uppercase; }
+/* 🚨 ESTILOS DO NOVO CARD AZUL 🚨 */
+.blue-header-card {
+  background: linear-gradient(135deg, #1154D9 0%, #0554F2 100%); /* Gradiente Azul StudyUp */
+  border-radius: 20px;
+  padding: 30px;
+  color: white;
+  margin-bottom: 35px; /* Espaço antes da lista */
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(17, 84, 217, 0.3);
+  max-width: 800px; /* Alinha com a largura da lista */
+}
 
-/* LISTA DE ATIVIDADES */
+.blue-card-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative; z-index: 2; /* Fica acima da decoração */
+}
+
+.card-icon-large {
+  font-size: 48px;
+  background: rgba(255,255,255,0.2); /* Fundo translúcido no ícone */
+  padding: 15px;
+  border-radius: 50%;
+}
+
+.blue-card-content h2 { margin: 0 0 5px 0; font-size: 24px; font-weight: 700; }
+.blue-card-content p { margin: 0; font-size: 16px; opacity: 0.9; }
+
+/* Ícone decorativo de fundo (opcional, dá um toque "app") */
+.bg-deco-icon {
+  position: absolute; right: -20px; bottom: -40px;
+  font-size: 180px; opacity: 0.1; transform: rotate(-20deg);
+  z-index: 1; pointer-events: none;
+}
+/* ---------------------------------- */
+
+/* LISTA DE ATIVIDADES (Estilo Mobile Clean) */
 .section-label { font-size: 18px; color: #374151; margin-bottom: 20px; font-weight: 700; }
-.activities-grid { display: flex; flex-direction: column; gap: 15px; }
-.activity-card { background: white; border-radius: 16px; padding: 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid #F3F4F6; cursor: pointer; transition: 0.2s; }
-.activity-card:hover { border-color: #1154D9; transform: translateX(5px); }
-.act-left { display: flex; align-items: center; gap: 20px; }
-.act-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justifyContent: center; }
-.act-icon.blue { background: #EBF5FF; color: #2563EB; }
-.act-icon.pink { background: #FCE4EC; color: #E91E63; }
-.act-info h4 { margin: 0; color: #1F2937; font-size: 16px; }
-.act-info span { font-size: 13px; color: #9CA3AF; }
-.arrow-act { color: #D1D5DB; font-size: 28px; }
+
+.activities-list-clean { display: flex; flex-direction: column; gap: 15px; max-width: 800px; }
+
+.task-card-clean {
+  background: white; border: 1px solid #F0F0F0; border-radius: 16px;
+  padding: 20px; display: flex; align-items: center; gap: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03); cursor: pointer; transition: 0.2s;
+}
+.task-card-clean:hover { border-color: #1154D9; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+
+/* Ícones Circulares da Lista */
+.task-icon-circle { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justifyContent: center; }
+.task-icon-circle.blue { background-color: #E3F2FD; color: #1154D9; }
+.task-icon-circle.orange { background-color: #FFF3E0; color: #FF9800; }
+
+/* Texto do Card da Lista */
+.task-info-clean { flex: 1; }
+.task-info-clean h4 { margin: 0 0 4px 0; color: #1F2937; font-size: 16px; font-weight: 600; }
+.task-info-clean span { font-size: 13px; color: #9CA3AF; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+.status-icon { color: #D1D5DB; font-size: 28px; }
+
+/* Empty State */
+.empty-state-student { text-align: center; padding: 50px 0; color: #9CA3AF; }
+.empty-state-student span { font-size: 48px; display: block; margin-bottom: 10px; }
 
 /* MODAL */
 .student-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }

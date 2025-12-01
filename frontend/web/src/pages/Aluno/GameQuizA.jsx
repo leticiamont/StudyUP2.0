@@ -2,8 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../../services/api";
 import "./GameQuizA.css";
-
-// Editor simples para questões de código
 import CodeMirror from '@uiw/react-codemirror';
 import { python } from '@codemirror/lang-python';
 import { dracula } from '@uiw/codemirror-theme-dracula';
@@ -11,40 +9,44 @@ import { dracula } from '@uiw/codemirror-theme-dracula';
 export default function GameQuizA() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { levelData } = location.state || {};
+  const { levelData, pdfUrl, textContent, title } = location.state || {};
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [gameStatus, setGameStatus] = useState('loading'); // loading, playing, finished
+  const [gameStatus, setGameStatus] = useState('loading'); 
   
-  // Estados de Resposta
   const [selectedOption, setSelectedOption] = useState(null);
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
   const [codeAnswer, setCodeAnswer] = useState("");
   const [codeOutput, setCodeOutput] = useState("");
   const [isCodeRunning, setIsCodeRunning] = useState(false);
 
+  // 1. GERA O QUIZ COM IA
   useEffect(() => {
-    if (!levelData) {
-        alert("Erro ao carregar fase.");
-        navigate('/aluno/jogos');
-        return;
-    }
     generateQuiz();
   }, []);
 
   const generateQuiz = async () => {
     try {
-        // Chama a IA para criar o quiz baseado no PDF ou Texto
-        const payload = levelData.type === 'text' 
-            ? { textContent: levelData.content } 
-            : { pdfUrl: levelData.url };
+        const payload = {};
+        if (textContent) payload.textContent = textContent;
+        else if (pdfUrl) payload.pdfUrl = pdfUrl;
+        else if (levelData) {
+            if (levelData.type === 'text') payload.textContent = levelData.content;
+            else payload.pdfUrl = levelData.url;
+        } else {
+            // Mock de Teste (Caso entre direto sem dados)
+            setQuestions([{id: 1, type: 'multiple_choice', question: "Teste de Quiz (Sem conteúdo)", options: ["A", "B"], correctIndex: 0, points: 10}]);
+            setLoading(false);
+            setGameStatus('playing');
+            return;
+        }
             
         const response = await api.post("/api/ia/gerar-quiz", payload);
         
-        if (Array.isArray(response.data)) {
+        if (Array.isArray(response.data) && response.data.length > 0) {
             setQuestions(response.data);
             setGameStatus('playing');
         } else {
@@ -59,8 +61,7 @@ export default function GameQuizA() {
     }
   };
 
-  // --- Lógica de Jogo ---
-  
+  // 2. LÓGICA DE RESPOSTA
   const handleOptionClick = (index) => {
       if (isAnswerChecked) return;
       setSelectedOption(index);
@@ -70,8 +71,7 @@ export default function GameQuizA() {
           setScore(s => s + questions[currentIndex].points);
       }
 
-      // Avança após 2s
-      setTimeout(nextQuestion, 2000);
+      setTimeout(nextQuestion, 1500);
   };
 
   const handleRunCode = async () => {
@@ -86,7 +86,7 @@ export default function GameQuizA() {
 
           if (output == currentQ.expectedOutput?.trim()) {
              setScore(s => s + currentQ.points);
-             setTimeout(nextQuestion, 2000); // Acertou, avança
+             setTimeout(nextQuestion, 2000);
           } else {
              alert(`Saída incorreta. Esperado: ${currentQ.expectedOutput}`);
           }
@@ -102,20 +102,28 @@ export default function GameQuizA() {
           setCodeAnswer("");
           setCodeOutput("");
       } else {
-          setGameStatus('finished');
-          // Aqui você poderia salvar os pontos no backend (updateUser)
+          finishGame();
       }
   };
 
-  // --- Renderização ---
+  // 🚨 SALVAMENTO DE PONTOS NO FINAL 🚨
+  const finishGame = async () => {
+      setGameStatus('finished');
+      
+      if (score > 0) {
+          try {
+              // Chama a nova rota que criamos
+              await api.post('/api/users/add-points', { points: score });
+              console.log(`[Game] ${score} pontos salvos com sucesso!`);
+          } catch (error) {
+              console.error("Erro ao salvar pontos:", error);
+              // Não alertamos o usuário para não quebrar a imersão, mas logamos o erro
+          }
+      }
+  };
 
-  if (loading) return (
-    <div className="quiz-loading">
-        <div className="spinner"></div>
-        <h2>Preparando o Desafio com IA...</h2>
-        <p>Lendo o material: {levelData?.title}</p>
-    </div>
-  );
+  // --- RENDER ---
+  if (loading) return <div className="quiz-loading"><div className="spinner"></div><h2>Criando Desafio...</h2></div>;
 
   if (gameStatus === 'finished') return (
     <div className="quiz-finished">
@@ -124,7 +132,7 @@ export default function GameQuizA() {
         <p>Você completou o desafio.</p>
         <div className="final-score">
             <span>Pontuação Total:</span>
-            <strong>{score} XP</strong>
+            <strong>+{score} XP</strong>
         </div>
         <button className="btn-back-map" onClick={() => navigate('/aluno/jogos')}>Voltar ao Mapa</button>
     </div>
@@ -166,7 +174,7 @@ export default function GameQuizA() {
                         <pre>{codeOutput}</pre>
                     </div>
                     <button className="btn-run-quiz" onClick={handleRunCode} disabled={isCodeRunning}>
-                        {isCodeRunning ? 'Rodando...' : 'Executar e Verificar'}
+                        {isCodeRunning ? 'Rodando...' : 'Verificar Código'}
                     </button>
                 </div>
             ) : (

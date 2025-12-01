@@ -8,10 +8,9 @@ export default function AlunoConteudoA() {
   const navigate = useNavigate();
   const auth = getAuth();
   
-  const [user, setUser] = useState({ displayName: "Aluno" });
+  const [user, setUser] = useState({ displayName: "Aluno", gradeLevel: "" });
   const [contents, setContents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeModule, setActiveModule] = useState(1);
   const [viewingContent, setViewingContent] = useState(null);
 
   useEffect(() => {
@@ -25,26 +24,14 @@ export default function AlunoConteudoA() {
   const fetchContents = async (userData) => {
     setLoading(true);
     try {
-      // 🚨 CORREÇÃO: Envia classId E gradeLevel juntos para a busca híbrida
       let endpoint = `/api/contents?`;
       const params = [];
       
-      if (userData.classId) {
-          params.push(`classId=${userData.classId}`);
-      } 
-      // Sempre manda o nível se tiver, para pegar os gerais
-      if (userData.gradeLevel) {
-          params.push(`gradeLevel=${encodeURIComponent(userData.gradeLevel)}`);
-      }
-      
-      if (params.length === 0) {
-          setLoading(false); 
-          return;
-      }
+      if (userData.classId) params.push(`classId=${userData.classId}`);
+      if (userData.gradeLevel) params.push(`gradeLevel=${encodeURIComponent(userData.gradeLevel)}`);
+      params.push(`t=${new Date().getTime()}`);
 
-      // Adiciona timestamp para evitar cache
-      const cacheBuster = `t=${new Date().getTime()}`;
-      params.push(cacheBuster);
+      if (params.length === 0) { setLoading(false); return; }
 
       const response = await api.get(endpoint + params.join('&'));
       setContents(response.data);
@@ -58,20 +45,13 @@ export default function AlunoConteudoA() {
     }
   };
 
-  // Função de abrir (com suporte a PDF em nova aba)
   const handleOpenActivity = (item) => {
     if (item.type === 'text') {
       setViewingContent(item);
     } else {
-      // Abre PDF direto em nova aba
-      window.open(item.url, '_blank', 'noopener,noreferrer');
+      window.open(item.url, '_blank');
     }
   };
-
-  const modules = [
-    { id: 1, title: "Módulo Atual", subtitle: "Fundamentos", progress: 100, status: "active", color: "#1154D9" },
-    { id: 2, title: "Próximo Nível", subtitle: "Em breve...", progress: 0, status: "locked", color: "#A0A0A0" },
-  ];
 
   return (
     <div className="student-container">
@@ -88,45 +68,55 @@ export default function AlunoConteudoA() {
       </aside>
 
       <main className="student-content">
+        
         <header className="student-header-simple">
-            <h1>Minhas Aulas</h1>
-            <span className="header-subtitle">{user.gradeLevel || "Bons estudos!"}</span>
+            <h1>Área de Estudos</h1>
+            <span className="header-subtitle">Explore seus materiais</span>
         </header>
 
-        <section className="modules-track">
-            {modules.map(mod => (
-                <div key={mod.id} className={`module-card ${mod.status}`} style={{ '--mod-color': mod.color }} onClick={() => mod.status === 'active' && setActiveModule(mod.id)}>
-                    <div className="mod-top"><span className="mod-title">{mod.title}</span>{mod.status === 'active' && <span className="material-symbols-rounded star-icon">star</span>}</div>
-                    <span className="mod-sub">{mod.subtitle}</span>
-                    <div className="mod-progress-bar"><div className="mod-progress-fill" style={{width: `${mod.progress}%`}}></div></div>
-                    <span className="mod-count">{mod.id === 1 ? `${contents.length} atividades` : 'Bloqueado'}</span>
+        {/* 🚨 NOVO: CARD AZUL DE DESTAQUE (Igual Mobile) 🚨 */}
+        <div className="blue-header-card">
+            <div className="blue-card-content">
+                <span className="material-symbols-rounded card-icon-large">school</span>
+                <div>
+                    <h2>Aulas Disponíveis</h2>
+                    {/* Mostra o nível do aluno dinamicamente */}
+                    <p>Conteúdo para {user.gradeLevel || "sua turma"}</p>
                 </div>
-            ))}
-        </section>
+            </div>
+            {/* Ícone de fundo decorativo */}
+            <span className="material-symbols-rounded bg-deco-icon">auto_stories</span>
+        </div>
+        {/* -------------------------------------------------- */}
 
         <section className="activities-list-section">
-            <h3 className="section-label">Conteúdo do Módulo {activeModule}</h3>
-            {loading ? <p>Carregando...</p> : contents.length === 0 ? <div className="empty-state-student"><p>Nenhuma aula encontrada para sua turma.</p></div> : (
-                <div className="activities-grid">
+            <h3 className="section-label">Materiais Recentes</h3>
+            
+            {loading ? <p>Carregando materiais...</p> : contents.length === 0 ? (
+                <div className="empty-state-student">
+                    <span className="material-symbols-rounded">auto_stories</span>
+                    <p>Nenhuma aula disponível ainda.</p>
+                </div>
+            ) : (
+                <div className="activities-list-clean">
                     {contents.map((item) => (
-                        <div key={item.id} className="activity-card" onClick={() => handleOpenActivity(item)}>
-                            <div className="act-left">
-                                <div className={`act-icon ${item.type === 'text' ? 'blue' : 'pink'}`}>
-                                    <span className="material-symbols-rounded">{item.type === 'text' ? 'menu_book' : 'picture_as_pdf'}</span>
-                                </div>
-                                <div className="act-info">
-                                    <h4>{item.name}</h4>
-                                    <span>{item.type === 'text' ? 'Leitura' : 'PDF'}</span>
-                                    {/* Tag para diferenciar origem (opcional) */}
-                                    {item.classId && <span className="tag-origin">Da Turma</span>}
-                                </div>
+                        <div key={item.id} className="task-card-clean" onClick={() => handleOpenActivity(item)}>
+                            <div className={`task-icon-circle ${item.type === 'text' ? 'blue' : 'orange'}`}>
+                                <span className="material-symbols-rounded">
+                                    {item.type === 'text' ? 'description' : 'picture_as_pdf'}
+                                </span>
                             </div>
-                            <span className="material-symbols-rounded arrow-act">chevron_right</span>
+                            <div className="task-info-clean">
+                                <h4>{item.name}</h4>
+                                <span>{item.type === 'text' ? 'Leitura & Estudo' : 'Arquivo PDF'}</span>
+                            </div>
+                            <span className="material-symbols-rounded status-icon">chevron_right</span>
                         </div>
                     ))}
                 </div>
             )}
         </section>
+
       </main>
 
       {viewingContent && (
