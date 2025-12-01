@@ -1,21 +1,17 @@
 import { db, admin } from "../config/firebase.js";
 
 // --- Helpers ---
-
 const gerarUsername = (nomeCompleto) => {
   if (!nomeCompleto) return 'usuario.indefinido';
-  // Remove acentos, minúsculo, divide por espaço
   const partes = nomeCompleto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").split(' ');
   if (partes.length === 1) return partes[0];
   return `${partes[0]}.${partes[partes.length - 1]}`;
 };
 
-const gerarSenhaProvisoria = () => 'studyup123';
+const gerarSenhaAluno = () => 'studyup123';
 const gerarSenhaProfessor = () => 'professor123';
+const gerarSenhaProvisoria = () => 'studyup123'; // Fallback
 
-/**
- * Converte data DD/MM/AAAA para ISO AAAA-MM-DD
- */
 const parseDate = (dateString) => {
   if (!dateString) return null;
   const [day, month, year] = dateString.split('/');
@@ -25,13 +21,10 @@ const parseDate = (dateString) => {
 
 const userService = {
   /**
-   * @description Criar usuário (individual ou via lote)
+   * @description Criar usuário
    */
   async createUser(data) {
-    // GARANTIA DE DADOS:
-    // Vamos garantir que gradeLevel e schoolYear não se misturem.
-    const { email, password, displayName, role, dateOfBirth, gradeLevel, schoolYear } = data;
-    
+    const { email, displayName, role, dateOfBirth, gradeLevel, schoolYear } = data;
     const isStudent = (role === 'student');
     
     let finalPassword = data.password;
@@ -41,7 +34,7 @@ const userService = {
     if (isStudent) {
       finalUsername = data.username || gerarUsername(displayName);
       finalEmail = `${finalUsername}@studyup.com`;
-      finalPassword = gerarSenhaProvisoria();
+      finalPassword = gerarSenhaAluno();
     } else {
       finalUsername = email;
       if (!finalPassword) finalPassword = gerarSenhaProfessor();
@@ -68,22 +61,18 @@ const userService = {
       }
     }
     
-    // SALVANDO NO FIRESTORE
     await db.collection("users").doc(userRecord.uid).set({
       displayName,
       email: finalEmail,
       username: finalUsername,
       role,
       dateOfBirth: dateOfBirth || null,
-      
-      // CORREÇÃO AQUI: Garante que salvamos o que veio do form
-      gradeLevel: gradeLevel || null, // Deve ser "Fundamental 2"
-      schoolYear: schoolYear || null, // Deve ser "9º Ano"
-      
+      gradeLevel: gradeLevel || null,
+      schoolYear: schoolYear || null,
       points: 0,
       uid: userRecord.uid,
       createdAt: new Date().toISOString(),
-      isActive: true, 
+      isActive: true,
       needsPasswordChange: true 
     });
 
@@ -96,108 +85,89 @@ const userService = {
   },
 
   /**
-   * @description Ativar/Desativar usuário
-   */
-  async toggleUserStatus(id, isActive) {
-    // Auth: disabled é o oposto de isActive
-    await admin.auth().updateUser(id, { disabled: !isActive });
-    // Firestore: atualiza visual
-    await db.collection("users").doc(id).update({ isActive: isActive });
-    return { id, isActive };
-  },
-
-  /**
-   * @description Reseta a senha de um aluno (Fase 4)
+   * @description Reseta a senha para o PADRÃO
    */
   async resetPassword(id) {
-    // Gera nova senha aleatória simples (ex: reset4829)
-    const newPassword = 'reset' + Math.floor(1000 + Math.random() * 9000);
+    const userDoc = await db.collection("users").doc(id).get();
+    if (!userDoc.exists) throw new Error("Usuário não encontrado.");
     
-    // Força no Auth
+    const userData = userDoc.data();
+    let newPassword;
+    
+    if (userData.role === 'student') {
+      newPassword = gerarSenhaAluno();
+    } else if (userData.role === 'teacher' || userData.role === 'professor') {
+      newPassword = gerarSenhaProfessor();
+    } else {
+      newPassword = 'admin123';
+    }
+    
     await admin.auth().updateUser(id, { password: newPassword });
-    
-    // Marca flag no Firestore
     await db.collection("users").doc(id).update({ needsPasswordChange: true });
     
     return { newPassword };
   },
 
-  /**
-   * @description Busca usuários com filtros
-   */
+  async toggleUserStatus(id, isActive) {
+    await admin.auth().updateUser(id, { disabled: !isActive });
+    await db.collection("users").doc(id).update({ isActive: isActive });
+    return { id, isActive };
+  },
+
   async getAllUsers(role, gradeLevel, sort, search, classId) { 
     let query = db.collection("users");
     query = query.where("role", "==", role);
-    
     if (gradeLevel) query = query.where("gradeLevel", "==", gradeLevel);
     if (classId) query = query.where("classId", "==", classId);
     
-    // Ordenação Opcional (Evita erro de índice se não for pedido)
     if (sort) {
-      const sortDirection = (sort === 'asc') ? 'asc' : 'desc';
-      query = query.orderBy("displayName", sortDirection);
+        const sortDirection = (sort === 'asc') ? 'asc' : 'desc';
+        query = query.orderBy("displayName", sortDirection);
     } else {
-      query = query.orderBy("createdAt", "desc");
+        query = query.orderBy("createdAt", "desc");
     }
     
     const snapshot = await query.get();
     let usersList = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-    // Filtro de Busca Manual (Nome ou Username)
     if (search) {
       usersList = usersList.filter(user => 
         user.displayName.toLowerCase().includes(search.toLowerCase()) ||
-        (user.username && user.username.toLowerCase().includes(search.toLowerCase())) ||
-        (user.email && user.email.toLowerCase().includes(search.toLowerCase()))
+        (user.username && user.username.toLowerCase().includes(search.toLowerCase()))
       );
     }
     return usersList;
   },
 
-  /**
-   * @description Pré-visualização de Importação em Lote
-   */
   async previewBatchUsers(alunosDoCsv) {
     const listaValidada = [];
     const erros = [];
-    
     for (const aluno of alunosDoCsv) {
-      // Tenta ler com nomes amigáveis ou chaves diretas
-      const displayName = aluno["NomeCompleto"] || aluno["Nome Completo"]; 
+      const displayName = aluno["NomeCompleto"] || aluno["Nome Completo"];
       const dateString = aluno["DataNascimento"] || aluno["Data de Nascimento"];
       const gradeLevel = aluno["NivelEscolar"] || aluno["Nível Escolar"];
-      const schoolYear = aluno["AnoSerie"] || aluno["Ano/Série"]; // Opcional no CSV por enquanto
+      const schoolYear = aluno["AnoSerie"] || aluno["Ano/Série"];
 
       if (!displayName || !dateString || !gradeLevel) {
-        erros.push({ linha: displayName || "Linha Vazia", erro: "Colunas obrigatórias em falta (Nome, Data, Nível)." });
+        erros.push({ linha: displayName || "Linha Vazia", erro: "Colunas em falta." });
         continue;
       }
-      
       const dateOfBirth = parseDate(dateString);
       if (dateOfBirth === null) {
-         erros.push({ linha: displayName, erro: "Data inválida. Use DD/MM/AAAA." });
+         erros.push({ linha: displayName, erro: "Data inválida." });
          continue;
       }
-      
       const username = gerarUsername(displayName);
       
       listaValidada.push({
-        displayName, 
-        dateOfBirth, 
-        gradeLevel, 
-        schoolYear: schoolYear || '',
-        username,
-        email: `${username}@studyup.com`,
-        password: gerarSenhaProvisoria(),
-        role: 'student'
+        displayName, dateOfBirth, gradeLevel, schoolYear: schoolYear || '',
+        username, email: `${username}@studyup.com`,
+        password: gerarSenhaAluno(), role: 'student'
       });
     }
     return { listaValidada, erros };
   },
   
-  /**
-   * @description Confirmação de Importação em Lote
-   */
   async confirmBatchUsers(listaDeAlunos) {
     const relatorio = { sucessos: 0, falhas: 0, detalhesFalhas: [] };
     for (const dadosAluno of listaDeAlunos) {
@@ -214,8 +184,7 @@ const userService = {
 
   async getUserById(id) {
     const doc = await db.collection("users").doc(id).get();
-    if (!doc.exists) return null;
-    return { id: doc.id, ...doc.data() };
+    return doc.exists ? { id: doc.id, ...doc.data() } : null;
   },
 
   async updateUser(id, data) {
@@ -223,20 +192,11 @@ const userService = {
     if (!displayName) throw new Error("Nome obrigatório.");
 
     if (role === 'teacher') {
-      if (!email) throw new Error("Email obrigatório.");
       await admin.auth().updateUser(id, { email, displayName });
-      await db.collection("users").doc(id).update({ 
-        displayName, email, username: email 
-      });
+      await db.collection("users").doc(id).update({ displayName, email, username: email });
     } else {
-      // Aluno
       await admin.auth().updateUser(id, { displayName });
-      await db.collection("users").doc(id).update({ 
-        displayName, 
-        dateOfBirth: dateOfBirth || null, 
-        gradeLevel: gradeLevel || null,
-        schoolYear: schoolYear || null
-      });
+      await db.collection("users").doc(id).update({ displayName, dateOfBirth, gradeLevel, schoolYear });
     }
     return { id };
   },
@@ -246,31 +206,15 @@ const userService = {
     await db.collection("users").doc(id).delete();
     return { message: "Deletado." };
   },
-
-/**
-   * @description DEDUZ PONTOS DO USUÁRIO (XP) - FUNÇÃO DE GAMIFICAÇÃO
-   * @param uid (string) - ID do usuário
-   * @param amount (number) - Quantidade a deduzir
-   */
+  
   async deductPoints(uid, amount) {
     const userRef = db.collection("users").doc(uid);
     const userDoc = await userRef.get();
-
-    if (!userDoc.exists) {
-      throw new Error("Usuário não encontrado.");
-    }
-    
+    if (!userDoc.exists) throw new Error("Usuário não encontrado.");
     const currentPoints = userDoc.data().points || 0;
     const newPoints = currentPoints - amount;
-    
-    if (newPoints < 0) {
-        throw new Error("Pontos insuficientes.");
-    }
-
-    await userRef.update({
-        points: newPoints
-    });
-
+    if (newPoints < 0) throw new Error("Pontos insuficientes.");
+    await userRef.update({ points: newPoints });
     return { newPoints };
   },
 };
