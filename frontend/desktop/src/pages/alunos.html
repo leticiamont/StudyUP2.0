@@ -7,7 +7,8 @@
   
   <link rel="stylesheet" href="../styles/layout.css">
   <link rel="stylesheet" href="../styles/main.css">
-  <link rel="stylesheet" href="../styles/turmas-conteudos.css"> <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
+  <link rel="stylesheet" href="../styles/turmas-conteudos.css">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet">
 </head>
 <body>
 
@@ -35,8 +36,8 @@
       </div>
       <select id="alunos-filter-grade" class="filter-select">
         <option value="">Filtrar por Nível</option>
-        <option value="Ensino Fundamental 1">Ensino Fundamental 1</option>
-        <option value="Ensino Fundamental 2">Ensino Fundamental 2</option>
+        <option value="Fundamental 1">Fundamental 1</option>
+        <option value="Fundamental 2">Fundamental 2</option>
         <option value="Ensino Médio">Ensino Médio</option>
       </select>
       <select id="alunos-filter-sort" class="filter-select">
@@ -51,9 +52,10 @@
           <tr>
             <th>NOME</th>
             <th>USERNAME (LOGIN)</th>
-            <th>DATA DE NASCIMENTO</th> <th>NÍVEL ESCOLAR</th>
-            <th>TURMA</th>
             <th>STATUS</th>
+            <th>DATA DE NASCIMENTO</th>
+            <th>NÍVEL ESCOLAR</th>
+            <th>TURMA</th>
             <th>AÇÕES</th>
           </tr>
         </thead>
@@ -66,20 +68,16 @@
   <div id="modalAluno" class="modal-overlay">
     <div class="modal-content">
       <span id="closeModalAlunoBtn" class="modal-close">&times;</span>
-      <h2 id="alunoModalTitle">Novo Aluno</h2> <form id="formAluno">
-       
+      <h2 id="alunoModalTitle">Novo Aluno</h2>
       <form id="formAluno">
-        
         <div class="form-group">
           <label for="aluno-name">Nome Completo do Aluno</label>
           <input type="text" id="aluno-name" name="displayName" required>
         </div>
-        
         <div class="form-group">
           <label for="aluno-dob">Data de Nascimento</label>
           <input type="date" id="aluno-dob" name="dateOfBirth" required>
         </div>
-
         <div class="form-group">
           <label for="aluno-gradeLevel">Nível Escolar</label>
           <select id="aluno-gradeLevel" name="gradeLevel" required>
@@ -89,64 +87,45 @@
             <option value="Ensino Médio">Ensino Médio</option>
           </select>
         </div>
-
         <div class="form-group">
           <label for="aluno-schoolYear">Ano/Série</label>
           <select id="aluno-schoolYear" name="schoolYear" required disabled>
-            <option value="">Selecione o Nível primeiro</option>
+            <option value="">Selecione o nível primeiro</option>
           </select>
         </div>
-        
         <p id="alunoModalInfo" style="font-size: 13px; color: #555;">
           O Username e a Senha Provisória serão gerados automaticamente.
         </p>
-        
         <div class="form-actions">
           <button type="submit" id="alunoModalSubmitBtn" class="btn btn-primary">Salvar e Gerar Credenciais</button>
         </div>
       </form>
     </div>
   </div>
-  
-  <div id="modalAluno" class.="modal-overlay"> ... </div>
 
   <div id="modalStatus" class="modal-overlay" style="z-index: 1001;">
     <div class="modal-content">
       <span id="closeStatusModalBtn" class="modal-close">&times;</span>
-      <h2 id="statusModalTitle">Importação Concluída!</h2>
-      
-      <pre id="statusModalMessage" style="background-color: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto;">
-        Sucessos: 0
-        Falhas: 2
-      </pre>
-
+      <h2 id="statusModalTitle">Aviso</h2>
+      <pre id="statusModalMessage" style="background-color: #f5f5f5; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto; white-space: pre-wrap;"></pre>
       <div class="form-actions">
         <button id="okStatusModalBtn" class="btn btn-primary">OK</button>
       </div>
     </div>
   </div>
+
   <div id="modalPreviewCSV" class="modal-overlay" style="z-index: 1002;">
     <div class="modal-content" style="max-width: 800px;">
       <span id="closePreviewBtn" class="modal-close">&times;</span>
       <h2>Confirmar Importação</h2>
-      
       <p>Revise os alunos lidos do ficheiro.</p>
       <div id="previewErros" style="color: red; margin-bottom: 10px;"></div>
-
       <div class="table-container" style="max-height: 300px; overflow-y: auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Data Nasc.</th>
-              <th>Nível</th>
-              <th>Username</th>
-            </tr>
-          </thead>
+        <table style="width: 100%;">
+          <thead><tr><th>Nome</th><th>Data Nasc.</th><th>Nível</th><th>Username</th></tr></thead>
           <tbody id="previewTabelaBody"></tbody>
         </table>
       </div>
-
       <div class="form-actions">
         <button id="cancelarPreviewBtn" class="btn btn-secondary">Cancelar</button>
         <button id="salvarCsvBtn" class="btn btn-primary">Confirmar e Salvar</button>
@@ -167,6 +146,5 @@
   </div>
   
   <script src="../scripts/alunos.js" type="module"></script>
-
 </body>
 </html>

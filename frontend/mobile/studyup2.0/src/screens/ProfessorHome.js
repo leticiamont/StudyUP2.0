@@ -185,17 +185,20 @@ export default function ProfessorHome({ route }) {
   
   // ... (Funções do Perfil) ...
   const handleLogout = async () => {
-    const executeLogout = async () => {
+      setProfileModalVisible(false);
       try {
-        await signOut(auth); 
-        await AsyncStorage.removeItem('userToken'); 
-        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-      } catch (error) { console.error("Erro ao sair:", error); }
-    };
-    Alert.alert("Sair", "Deseja realmente sair do aplicativo?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Sair", style: "destructive", onPress: executeLogout }
-    ]);
+          // Limpa dados de sessão
+          await AsyncStorage.removeItem('userToken');
+          // (Opcional: Limpar tudo com AsyncStorage.clear() se quiser resetar o app todo)
+          
+          // Reseta a navegação para a tela de Login (impede voltar)
+          navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+          });
+      } catch (e) {
+          console.log("Erro ao sair", e);
+      }
   };
 
   const handleChangePassword = async () => {

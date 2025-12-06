@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
     StyleSheet, Text, View, TouchableOpacity, Platform, StatusBar, 
-    ActivityIndicator, Modal, FlatList, Alert
+    ActivityIndicator, FlatList, Alert
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,14 +16,10 @@ export default function ProfessorDetalheTurma({ route }) {
   
   const [activeTab, setActiveTab] = useState('alunos'); 
   const [alunos, setAlunos] = useState([]);
+  
+  // Lista EXCLUSIVA de materiais (conteúdos), sem planos de aula
   const [conteudosTurma, setConteudosTurma] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // Estados de Modal removidos parcialmente pois não serão usados pelo botão +,
-  // mas mantidos caso queira reativar futuramente ou usar outra lógica.
-  const [modalVisible, setModalVisible] = useState(false);
-  const [bankModalVisible, setBankModalVisible] = useState(false);
-  const [bancoPlanos, setBancoPlanos] = useState([]); 
 
   if (!turma) return null;
 
@@ -34,32 +30,21 @@ export default function ProfessorDetalheTurma({ route }) {
         const data = await api.get(`/api/users?role=student&classId=${turma.id}`);
         setAlunos(Array.isArray(data) ? data : []);
       } else {
-        // BUSCA HÍBRIDA (Geral + Específico)
-        const [allContentsData, plansData] = await Promise.all([
-            api.get(`/api/contents`),
-            api.get(`/api/plans?classId=${turma.id}`)
-        ]);
-
-        const validContents = Array.isArray(allContentsData) ? allContentsData : [];
-        const validPlans = Array.isArray(plansData) ? plansData : [];
+        // CORREÇÃO: Busca materiais da Turma E materiais do Ano da turma
+        const schoolYear = turma.schoolYear; // ex: "9º Ano"
         
-        const conteudosFiltrados = validContents.filter(c => {
-            const ehDestaTurma = c.classId === turma.id;
-            
-            const serieConteudo = (c.schoolYear || "").trim();
-            const serieTurma = (turma.schoolYear || "").trim();
-            const nivelConteudo = (c.gradeLevel || "").trim();
-            const nivelTurma = (turma.gradeLevel || turma.educationLevel || "").trim();
-
-            const ehDaSerie = !c.classId && (
-                (serieConteudo && serieConteudo === serieTurma) || 
-                (nivelConteudo && nivelConteudo === nivelTurma)
-            );
-            
-            return ehDestaTurma || ehDaSerie;
-        });
-
-        setConteudosTurma([...conteudosFiltrados, ...validPlans]);
+        const [classContents, yearContents] = await Promise.all([
+            api.get(`/api/contents?classId=${turma.id}`), // Materiais exclusivos desta turma
+            api.get(`/api/contents?schoolYear=${encodeURIComponent(schoolYear)}`) // Materiais do ano (ex: provas gerais)
+        ]);
+        
+        // Combina e remove duplicatas (por ID)
+        const combined = [...(Array.isArray(classContents) ? classContents : []), ...(Array.isArray(yearContents) ? yearContents : [])];
+        
+        // Remove duplicatas usando Map
+        const uniqueContents = Array.from(new Map(combined.map(item => [item.id, item])).values());
+        
+        setConteudosTurma(uniqueContents);
       }
     } catch (error) {
       console.log("Erro ao buscar dados:", error);
@@ -67,22 +52,28 @@ export default function ProfessorDetalheTurma({ route }) {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     if (turma?.id) fetchData();
   }, [activeTab, turma]);
 
-  // Funções de Upload mantidas caso precise reativar, mas não estão sendo chamadas na UI agora
-  const handleUploadDevice = async () => { /* ... */ };
-  const openBankModal = async () => { /* ... */ };
-  const assignContentToClass = async (item) => { /* ... */ };
+  // Função para abrir o material (PDF ou Texto)
+  const handleOpenItem = (item) => {
+      if (item.url) {
+          navigation.navigate('ViewPDF', { url: item.url });
+      } else if (item.type === 'text') {
+           // Se for texto criado pela IA ou editor
+           // Reutilizamos a tela de Editor apenas para visualização se necessário
+           // ou criamos um modal simples. Aqui mantive o padrão do app.
+           Alert.alert("Conteúdo de Texto", item.content);
+      }
+  };
 
-  // Renderização de item da lista (Card)
+  // Renderização do Card de Material
   const renderContentItem = ({ item }) => (
     <View style={styles.cardContent}>
       <View style={styles.iconBox}>
         <MaterialCommunityIcons 
-          name={item.url ? "file-pdf-box" : "clipboard-text"} 
+          name={item.url ? "file-pdf-box" : "text-box-outline"} 
           size={28} 
           color="#1154D9" 
         />
@@ -91,28 +82,18 @@ export default function ProfessorDetalheTurma({ route }) {
         <Text style={styles.contentName} numberOfLines={1}>{item.name}</Text>
         <View style={{flexDirection:'row', alignItems:'center'}}>
             <Text style={styles.contentType}>
-                {item.url ? 'Documento PDF' : 'Plano de Aula'}
+                {item.url ? 'Arquivo PDF' : 'Material de Texto'}
             </Text>
             {!item.classId && (
                 <View style={styles.tagGeneral}>
-                    <Text style={styles.tagText}>Geral da Série</Text>
+                    <Text style={styles.tagText}>Geral ({item.schoolYear})</Text>
                 </View>
             )}
         </View>
       </View>
       
-      <TouchableOpacity onPress={() => {
-          if(item.url) {
-              navigation.navigate('ViewPDF', { url: item.url });
-          } else {
-              navigation.navigate('EditorPlanoAula', { plan: item });
-          }
-      }}>
-        <MaterialCommunityIcons 
-            name={item.url ? "eye" : "pencil"} 
-            size={24} 
-            color="#555" 
-        />
+      <TouchableOpacity onPress={() => handleOpenItem(item)}>
+        <MaterialCommunityIcons name="eye" size={24} color="#555" />
       </TouchableOpacity>
     </View>
   );
@@ -153,7 +134,7 @@ export default function ProfessorDetalheTurma({ route }) {
           style={[styles.tab, activeTab === 'conteudo' && styles.activeTab]} 
           onPress={() => setActiveTab('conteudo')}
         >
-          <Text style={[styles.tabText, activeTab === 'conteudo' && styles.activeTabText]}>Conteúdo</Text>
+          <Text style={[styles.tabText, activeTab === 'conteudo' && styles.activeTabText]}>Materiais</Text>
         </TouchableOpacity>
       </View>
 
@@ -182,20 +163,18 @@ export default function ProfessorDetalheTurma({ route }) {
                 <FlatList
                   data={conteudosTurma}
                   keyExtractor={item => item.id}
-                  ListEmptyComponent={<Text style={styles.emptyText}>Nenhum conteúdo encontrado para esta turma ou série.</Text>}
+                  ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                        Nenhum material encontrado para o {turma.schoolYear}.
+                    </Text>
+                  }
                   renderItem={renderContentItem}
                 />
-                {/* BOTÃO FAB (+) REMOVIDO AQUI */}
               </View>
             )}
           </>
         )}
       </View>
-
-      {/* Modais mantidos no código mas inativos visualmente sem o botão */}
-      <Modal visible={modalVisible} transparent={true} animationType="fade" onRequestClose={() => setModalVisible(false)}>
-         {/* ... conteúdo do modal ... */}
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -217,7 +196,9 @@ const styles = StyleSheet.create({
   cardAluno: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 10 },
   alunoName: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   alunoEmail: { fontSize: 12, color: '#888' },
-  cardContent: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 10, borderLeftWidth: 4, borderLeftColor: '#1154D9' },
+  
+  // CARD CONTEÚDO
+  cardContent: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 15, borderRadius: 10, marginBottom: 10, borderLeftWidth: 4, borderLeftColor: '#1154D9', elevation: 2 },
   iconBox: { marginRight: 15 },
   contentName: { fontSize: 16, fontWeight: 'bold', color: '#333' },
   contentType: { fontSize: 12, color: '#888' },
@@ -225,13 +206,4 @@ const styles = StyleSheet.create({
   // TAG GERAL
   tagGeneral: { backgroundColor: '#E3F2FD', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 8 },
   tagText: { color: '#1154D9', fontSize: 10, fontWeight: 'bold' },
-
-  // FAB removido da view, mas estilo mantido caso precise voltar
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#1154D9', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 3 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  menuContainer: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20 },
-  menuTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, color: '#333' },
-  menuOption: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  menuIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  menuText: { fontSize: 16, color: '#333' }
 });

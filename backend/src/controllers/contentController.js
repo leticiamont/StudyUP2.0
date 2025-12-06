@@ -13,155 +13,129 @@ cloudinary.config({
 
 const CONTENT_COLLECTION = 'contents'; 
 
-// --- UPLOAD (Mantido e Reforçado) ---
+// --- FUNÇÃO AUXILIAR: NORMALIZAR TEXTO ---
+// Remove espaços e deixa minúsculo para comparar "9º Ano" com "9ºAno"
+const normalize = (text) => {
+    if (!text) return "";
+    return text.toString().toLowerCase().replace(/\s+/g, '').replace('°', 'º').trim();
+};
+
+// --- UPLOAD (Mantido e Seguro) ---
 export const uploadContent = async (req, res) => {
   try {
     let publicUrl = null;
-    let publicId = null;
-    let type = req.body.type || (req.file ? req.file.mimetype : 'text'); 
+    let publicId = null; 
+    let type = req.body.type || 'text'; // Padrão é texto
+    let originalName = req.body.name || "Sem título";
 
-    if (!req.file && !req.body.content && type !== 'text') {
-      return res.status(400).json({ error: 'Nenhum arquivo ou texto enviado.' });
-    }
-    
+    // CASO 1: Upload de Arquivo (Veio pela rota /upload com Multer)
     if (req.file) {
+      console.log('Iniciando upload para o Cloudinary...');
       const uploadResult = await cloudinary.uploader.upload(req.file.path, {
         resource_type: 'auto',
         folder: 'studyup_uploads',
         use_filename: true,
         unique_filename: false,
-        access_mode: 'public' 
+        access_mode: 'public'
       });
       
       publicUrl = uploadResult.secure_url;
+      // Garante .pdf na URL se for PDF
       if (publicUrl && req.file.mimetype === 'application/pdf' && !publicUrl.endsWith('.pdf')) {
           publicUrl = publicUrl + '.pdf';
       }
+      
       publicId = uploadResult.public_id;
+      type = req.file.mimetype; // 'application/pdf' etc.
+      originalName = req.file.originalname;
+      
+      // Limpa temp
       if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    } 
+    
+    // CASO 2: Conteúdo de Texto (Veio pela rota / com JSON)
+    else if (req.body.content) {
+        // Apenas mantém o type='text' e salva o conteúdo
+    }
+    
+    // Validação: Se não tem arquivo E não tem texto, erro.
+    if (!publicUrl && !req.body.content && type !== 'text') {
+         return res.status(400).json({ error: 'Nenhum conteúdo enviado (arquivo ou texto).' });
     }
 
-    const authorId = req.user?.uid || 'anonym';
-    
-    // Dados normalizados
-    const gradeLevel = req.body.gradeLevel ? req.body.gradeLevel.trim() : null; // Ex: "Ensino Médio"
-    const schoolYear = req.body.schoolYear ? req.body.schoolYear.trim() : null; // Ex: "3º Ano"
-    const classId = (req.body.classId && req.body.classId !== 'null') ? req.body.classId : null;
+    const authorId = req.user?.uid || 'admin_desktop';
 
     const contentData = {
-      name: req.body.name || "Sem título",
+      name: req.body.name || originalName,
       type: type,
       url: publicUrl || req.body.url || null, 
-      public_id: publicId || null,
+      public_id: publicId || null, 
       content: req.body.content || null, 
-      
-      gradeLevel: gradeLevel,
-      schoolYear: schoolYear, // Salva o ano específico se vier
-      
+      gradeLevel: req.body.gradeLevel || null, 
+      schoolYear: req.body.schoolYear || null,
       teacherId: authorId, 
-      classId: classId, 
+      authorId: authorId,
+      classId: (req.body.classId && req.body.classId !== 'null') ? req.body.classId : null, 
       planId: req.body.planId || null,
       createdAt: new Date().toISOString(),
     };
     
     const docRef = await db.collection(CONTENT_COLLECTION).add(contentData);
-    console.log(`[Upload] ID: ${docRef.id} | Nível: ${gradeLevel} | Ano: ${schoolYear} | Prof: ${authorId}`);
-    
+    console.log(`Conteúdo salvo: ${contentData.name} (${type})`);
     res.status(201).json({ id: docRef.id, ...contentData });
 
   } catch (error) {
     console.error('[contentController:upload] Erro:', error);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: 'Erro ao salvar conteúdo.' });
   }
 };
 
-// 🚨 BUSCA BLINDADA (FILTRO EM MEMÓRIA) 🚨
+// --- BUSCA DE CONTEÚDOS (FILTROS INTELIGENTES) ---
 export const getContents = async (req, res) => {
   try {
-    const { gradeLevel, classId } = req.query;
-    const currentUser = req.user;
+    const { gradeLevel, classId, schoolYear } = req.query;
+    const role = req.user?.role;
+    const userId = req.user?.uid;
 
-    if (!currentUser || !currentUser.uid) {
-         return res.status(200).json([]);
-    }
+    let query = db.collection('contents');
 
-    let targetTeacherId = currentUser.uid; // Padrão: busca coisas do próprio usuário
-    let filterMode = 'PROFESSOR_OWN'; // Modo padrão
-
-    // --- LÓGICA DE CONTEXTO ---
-    if (classId) {
-        // Se veio um ID de turma, precisamos saber quem é o professor dessa turma
-        // para buscar os materiais DELE.
-        const classDoc = await db.collection('classes').doc(classId).get();
-        if (classDoc.exists) {
-            const classData = classDoc.data();
-            targetTeacherId = classData.teacherId; // O dono dos materiais é o prof da turma
-            filterMode = 'STUDENT_CLASS'; // Estamos buscando para um aluno (ou contexto de aula)
-            
-            // Dados para filtragem inteligente
-            var className = classData.name || "";
-            var classLevel = classData.gradeLevel || "";
-            
-            // Extrai série do nome (Ex: "3º Ano" de "3º Ano A")
-            var classSeries = null;
-            const match = className.match(/(\d+º?\s?(Ano|Série|Serie))/i);
-            if (match) classSeries = match[0].trim();
-            
-            console.log(`[getContents] Contexto Turma: ${className} | Prof: ${targetTeacherId} | Série: ${classSeries}`);
+    // 1. Se for Aluno (Mobile/Web)
+    if (role === 'student') {
+        // Se mandou classId (Material exclusivo da turma)
+        if (classId) {
+            query = query.where('classId', '==', classId);
+        } 
+        // Se mandou schoolYear (Material do Ano, ex: 3ª Série)
+        else if (schoolYear) {
+            query = query.where('schoolYear', '==', schoolYear);
         }
-    } else if (currentUser.role === 'student') {
-        // Aluno sem turma específica (busca genérica pelo nível)
-        // Difícil saber o professor sem a turma. Retorna vazio ou busca global.
-        // Por segurança, retorna vazio se não tiver turma vinculada.
-        console.log("[getContents] Aluno sem turma definida na busca.");
-        return res.status(200).json([]);
-    }
-
-    // 1. BUSCA TUDO DO PROFESSOR ALVO (Query simples, sem índices complexos)
-    const snapshot = await db.collection(CONTENT_COLLECTION)
-        .where('teacherId', '==', targetTeacherId)
-        .get();
-
-    const allDocs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    // 2. FILTRAGEM INTELIGENTE (EM MEMÓRIA)
-    let results = allDocs;
-
-    if (filterMode === 'STUDENT_CLASS') {
-        results = allDocs.filter(item => {
-            // A. É exclusivo desta turma?
-            if (item.classId === classId) return true;
-
-            // B. É geral (sem turma)?
-            if (!item.classId || item.classId === 'null') {
-                // Verifica schoolYear (Novo padrão "3º Ano")
-                if (classSeries && item.schoolYear === classSeries) return true;
-                
-                // Verifica gradeLevel (Se for igual à série ou ao nível geral)
-                // (Isso cobre o caso de ter salvo "3º Ano" no campo gradeLevel antigamente)
-                if (classSeries && item.gradeLevel === classSeries) return true;
-                if (classLevel && item.gradeLevel === classLevel) return true;
-            }
-            return false;
-        });
-    } else {
-        // Modo PROFESSOR (Gerenciamento)
-        // Se pediu filtro de nível/ano específico na tela de gestão:
-        if (gradeLevel) {
-            results = allDocs.filter(item => 
-                item.gradeLevel === gradeLevel || item.schoolYear === gradeLevel
-            );
+        // Se mandou gradeLevel (Material do Nível, ex: Ensino Médio)
+        else if (gradeLevel) {
+            query = query.where('gradeLevel', '==', gradeLevel);
         }
+        // Se não mandou nada, retorna vazio por segurança
+        else {
+            return res.status(200).json([]);
+        }
+    } 
+    // 2. Se for Professor (Vê o que criou)
+    else if (role === 'teacher') {
+        query = query.where('teacherId', '==', userId);
+    }
+    // 3. Se for Admin (Vê tudo, opcionalmente filtra)
+    else {
+        if (gradeLevel) query = query.where('gradeLevel', '==', gradeLevel);
     }
 
-    // Ordenação
-    results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const snapshot = await query.get();
+    const contents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    console.log(`[getContents] Retornando ${results.length} itens filtrados.`);
-    res.status(200).json(results);
+    res.status(200).json(contents);
 
   } catch (error) {
     console.error('[contentController:getContents] Erro:', error.message);
+    // Se for erro de índice, não quebra, devolve lista vazia no pior caso
     res.status(500).json({ error: 'Erro ao buscar conteúdos.' });
   }
 };
@@ -171,14 +145,17 @@ export const deleteContent = async (req, res) => {
     const { id } = req.params;
     const docRef = db.collection(CONTENT_COLLECTION).doc(id);
     const docSnap = await docRef.get();
+    
     if (!docSnap.exists) return res.status(404).json({ error: "Conteúdo não encontrado." });
+    
     const data = docSnap.data();
     if (data.public_id) {
         try {
             await cloudinary.uploader.destroy(data.public_id, { resource_type: 'raw' }); 
             await cloudinary.uploader.destroy(data.public_id, { resource_type: 'image' }); 
-        } catch(e) { console.log("Cloudinary:", e.message); }
+        } catch(e) { console.log("Cloudinary cleanup error:", e.message); }
     }
+    
     await docRef.delete();
     res.status(200).json({ message: "Conteúdo apagado." });
   } catch (error) {

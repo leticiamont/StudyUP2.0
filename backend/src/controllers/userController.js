@@ -1,5 +1,5 @@
 import userService from "../services/userService.js";
-import { db, admin } from "../config/firebase.js"; // <--- CORREÇÃO: Importando 'admin'
+import { db, admin } from "../config/firebase.js"; // Importante: admin e db
 import fs from 'fs';
 import csv from 'csv-parser';
 
@@ -48,6 +48,7 @@ export async function deleteUser(req, res) {
 
 // --- FUNÇÕES DE GESTÃO (Desktop) ---
 
+// ESTA É A FUNÇÃO QUE ESTAVA FALTANDO
 export async function toggleUserStatus(req, res) {
   try {
     const { id } = req.params;
@@ -69,13 +70,10 @@ export async function resetUserPassword(req, res) {
   }
 }
 
-/**
- * @route POST /api/users/change-password
- * @description Usuário logado altera sua própria senha (Primeiro Acesso)
- */
+// --- TROCA DE SENHA (PRIMEIRO ACESSO) ---
 export async function changePassword(req, res) {
   try {
-    // O middleware optionalAuth coloca o user em req.user
+    // O middleware optionalAuth ou authMiddleware coloca o user em req.user
     const uid = req.user ? req.user.uid : null;
     const { newPassword } = req.body;
 
@@ -87,7 +85,7 @@ export async function changePassword(req, res) {
       return res.status(400).json({ error: "A nova senha deve ter pelo menos 6 caracteres." });
     }
 
-    // 1. Atualiza no Auth (AGORA VAI FUNCIONAR POIS 'admin' FOI IMPORTADO)
+    // 1. Atualiza no Auth
     await admin.auth().updateUser(uid, { password: newPassword });
 
     // 2. Atualiza no Firestore (remove a flag de troca obrigatória)
@@ -197,6 +195,7 @@ export async function batchConfirmUsers(req, res) {
 
 export async function deductPoints(req, res) {
   try {
+    // Se vier do mobile tem user, se não, falha
     if (!req.user || !req.user.uid) return res.status(401).json({ error: "Usuário não autenticado." });
     
     const { uid } = req.user; 
@@ -213,5 +212,6 @@ export async function deductPoints(req, res) {
 }
 
 export async function addPoints(req, res) {
+    // Placeholder para evitar erro de rota, caso o mobile chame
     res.status(501).json({ error: "Não implementado ainda" });
 }

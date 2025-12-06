@@ -146,7 +146,7 @@ export default function ForumPageP() {
           <span className="logo-text"><span style={{color:'#0554F2'}}>STUDY</span><span style={{color:'#B2FF59'}}>UP</span></span>
         </div>
         <div className="header-actions">
-          <span className="material-symbols-rounded icon-btn">notifications</span>
+          
           <span className="material-symbols-rounded icon-btn">account_circle</span>
           <span className="user-role">Professor ▼</span>
         </div>
@@ -159,7 +159,7 @@ export default function ForumPageP() {
             <a href="/turmasP" className="nav-item"><span className="material-symbols-rounded">groups</span> Turmas</a>
             <a href="/conteudoP" className="nav-item"><span className="material-symbols-rounded">menu_book</span> Conteúdo</a>
             <a href="/forumP" className="nav-item active"><span className="material-symbols-rounded">forum</span> Fórum</a>
-            <a href="/configuracoesP" className="nav-item"><span className="material-symbols-rounded">settings</span> Configurações</a>
+            
           </nav>
         </aside>
 

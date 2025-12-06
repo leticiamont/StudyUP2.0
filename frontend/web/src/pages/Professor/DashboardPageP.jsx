@@ -218,7 +218,7 @@ export default function DashboardPageP() {
     <div className="main-container">
       <header className="top-bar">
         <div className="logo"><img src="/src/assets/logo.png" className="logo-image" /><span className="logo-text"><span style={{color:'#0554F2'}}>STUDY</span><span style={{color:'#B2FF59'}}>UP</span></span></div>
-        <div className="header-actions"><span className="material-symbols-rounded icon-btn">notifications</span><div className="user-profile" onClick={handleLogout}><span className="material-symbols-rounded icon-btn">account_circle</span><span className="user-role">{user.displayName} ▼</span></div></div>
+        <div className="header-actions"><div className="user-profile" onClick={handleLogout}><span className="material-symbols-rounded icon-btn">account_circle</span><span className="user-role">{user.displayName} ▼</span></div></div>
       </header>
 
       <div className="content-wrapper">
@@ -228,7 +228,7 @@ export default function DashboardPageP() {
             <a href="#" onClick={() => navigate('/turmasP')} className="nav-item"><span className="material-symbols-rounded">groups</span> Turmas</a>
             <a href="#" onClick={() => navigate('/conteudoP')} className="nav-item"><span className="material-symbols-rounded">menu_book</span> Conteúdo</a>
             <a href="#" onClick={() => navigate('/forumP')} className="nav-item"><span className="material-symbols-rounded">forum</span> Fórum</a>
-            <a href="#" onClick={() => navigate('/configuracoesP')} className="nav-item"><span className="material-symbols-rounded">settings</span> Configurações</a>
+            
           </nav>
         </aside>
 

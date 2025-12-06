@@ -61,7 +61,7 @@ export default function TurmasPageP() {
           </span>
         </div>
         <div className="header-actions">
-          <span className="material-symbols-rounded icon-btn">notifications</span>
+          
           <span className="material-symbols-rounded icon-btn">account_circle</span>
           <span className="user-role">Professor ▼</span>
         </div>
@@ -82,9 +82,7 @@ export default function TurmasPageP() {
             <a href="#" onClick={() => navigate('/forumP')} className="nav-item">
               <span className="material-symbols-rounded">forum</span> Fórum
             </a>
-            <a href="#" onClick={() => navigate('/configuracoesP')} className="nav-item">
-              <span className="material-symbols-rounded">settings</span> Configurações
-            </a>
+            
           </nav>
         </aside>
 

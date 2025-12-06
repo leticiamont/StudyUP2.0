@@ -42,6 +42,16 @@ export default function ConteudoPageP() {
     ]
   };
 
+  // --- FUNÇÃO DE AJUDA: NORMALIZAR TEXTO ---
+  // Remove espaços e diferenças de caixa para comparar "9º Ano" com "9ºAno"
+  const normalizeText = (text) => {
+      if (!text) return "";
+      return text.toString().toLowerCase()
+          .replace(/\s+/g, '') // remove espaços
+          .replace('°', 'º')   // padroniza grau
+          .trim();
+  };
+
   // 1. Carrega Níveis Gerais (Tela Inicial)
   useEffect(() => {
     async function fetchLevels() {
@@ -64,18 +74,18 @@ export default function ConteudoPageP() {
     loadContents(level);
   };
 
-  // 2. Carregar Conteúdos (AJUSTADO)
+  // 2. Carregar Conteúdos (COM CORREÇÃO DE SINCRONIA)
   const loadContents = async (level) => {
     setLoading(true);
     try {
+      // Agora pedimos apenas o gradeLevel para trazer tudo, e filtramos as séries aqui
       const [plansRes, contentsRes, classesRes] = await Promise.all([
         api.get(`/api/plans`),
-        // Busca TUDO do professor nesse nível (depois filtramos por ano escolar no front)
         api.get(`/api/contents?gradeLevel=${level}`), 
         api.get(`/api/classes`)
       ]);
 
-      // ... (Lógica de extrair séries igual)
+      // Extrai séries das turmas deste nível
       const myClassesInLevel = classesRes.data.filter(c => c.teacherId === teacherId && c.gradeLevel === level);
       const uniqueSeries = new Set();
       myClassesInLevel.forEach(cls => {
@@ -90,11 +100,17 @@ export default function ConteudoPageP() {
       seriesArray.forEach(serieName => {
         const plan = plansRes.data.find(p => p.gradeLevel === level && (p.name.includes(serieName) || seriesArray.length === 1)) || null;
         
-        // 🚨 FILTRO NOVO: Verifica schoolYear OU legacy (gradeLevel == serieName)
+        // 🚨 FILTRO ROBUSTO: Normaliza os nomes para garantir match entre Mobile e Web
         const contents = contentsRes.data.filter(c => {
             const isSameTeacher = c.teacherId === teacherId;
-            // Compatibilidade: Novos usam schoolYear, Antigos usavam gradeLevel como série
-            const matchSeries = c.schoolYear === serieName || c.gradeLevel === serieName;
+            
+            const contentYear = normalizeText(c.schoolYear);
+            const contentLevel = normalizeText(c.gradeLevel); // Legado
+            const targetSerie = normalizeText(serieName);
+
+            // Se bater o Ano (novo) OU bater o Nível (antigo), exibe
+            const matchSeries = (contentYear === targetSerie) || (contentLevel === targetSerie);
+            
             return isSameTeacher && matchSeries;
         });
 
@@ -102,7 +118,8 @@ export default function ConteudoPageP() {
       });
 
       setSeriesData(grouped);
-      // ... (Seleção de activeSerie igual)
+      
+      // Seleciona a primeira série se nenhuma estiver ativa
       if (seriesArray.length > 0) {
         if (!activeSerie || !seriesArray.includes(activeSerie)) {
             setActiveSerie(seriesArray[0]);
@@ -113,7 +130,7 @@ export default function ConteudoPageP() {
     finally { setLoading(false); }
   };
 
-  // --- AÇÕES DE SALVAR (COM O NOVO CAMPO) ---
+  // --- AÇÕES DE SALVAR ---
 
   const handleUpload = async (e) => {
     if (!activeSerie) { alert("Selecione uma série."); return; }
@@ -124,9 +141,9 @@ export default function ConteudoPageP() {
     formData.append("file", file);
     formData.append("name", file.name);
     
-    // 🚨 SALVA CORRETAMENTE AGORA
-    formData.append("gradeLevel", selectedLevel); // Ex: "Ensino Médio"
-    formData.append("schoolYear", activeSerie);   // Ex: "3º Ano"
+    // Salva Ano e Nível para compatibilidade total
+    formData.append("gradeLevel", selectedLevel); 
+    formData.append("schoolYear", activeSerie);   
 
     try {
       await api.post("/api/contents/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
@@ -143,10 +160,8 @@ export default function ConteudoPageP() {
         name: `IA: ${iaPrompt.substring(0, 20)}...`,
         content: iaResponse,
         type: "text",
-        
-        // 🚨 SALVA CORRETAMENTE AGORA
-        gradeLevel: selectedLevel, // Ex: "Ensino Médio"
-        schoolYear: activeSerie    // Ex: "3º Ano"
+        gradeLevel: selectedLevel, 
+        schoolYear: activeSerie    
     };
     
     try {
@@ -157,13 +172,11 @@ export default function ConteudoPageP() {
     } catch (error) { alert("Erro ao salvar."); }
   };
   
-
   const handleGenerateIA = async () => {
     if(!iaPrompt.trim()) return;
     setIaLoading(true);
     try {
         const res = await api.post("/api/ia/gerar", { prompt: iaPrompt });
-        // Formata quebras de linha para HTML
         setIaResponse(res.data.resposta.split('\n').map(p => `<p>${p}</p>`).join(''));
     } catch(e) { alert("Erro IA"); }
     setIaLoading(false);
@@ -187,7 +200,7 @@ export default function ConteudoPageP() {
     } catch (error) { alert("Erro."); }
   };
 
-  // Helper para URL do PDF (Google Viewer)
+  // Helper para URL do PDF
   const getPdfViewerUrl = (url) => {
     return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
   };
@@ -201,7 +214,7 @@ export default function ConteudoPageP() {
     <div className="main-container">
       {/* Header Global */}
       <header className="top-bar">
-        <div className="logo"><img src="/src/assets/logo.png" className="logo-image" /><span className="logo-text"><span style={{color:'#0554F2'}}>STUDY</span><span style={{color:'#B2FF59'}}>UP</span></span></div>
+        <div className="logo"><img src="/src/assets/logo.png" className="logo-image" alt="Logo" /><span className="logo-text"><span style={{color:'#0554F2'}}>STUDY</span><span style={{color:'#B2FF59'}}>UP</span></span></div>
         <div className="header-actions"><span className="material-symbols-rounded icon-btn">notifications</span><span className="material-symbols-rounded icon-btn">account_circle</span><span className="user-role">Professor ▼</span></div>
       </header>
 
@@ -212,7 +225,7 @@ export default function ConteudoPageP() {
             <a href="/turmasP" className="nav-item"><span className="material-symbols-rounded">groups</span> Turmas</a>
             <a href="/conteudoP" className="nav-item active"><span className="material-symbols-rounded">menu_book</span> Conteúdo</a>
             <a href="/forumP" className="nav-item"><span className="material-symbols-rounded">forum</span> Fórum</a>
-            <a href="/configuracoesP" className="nav-item"><span className="material-symbols-rounded">settings</span> Configurações</a>
+            
           </nav>
         </aside>
 
@@ -308,19 +321,14 @@ export default function ConteudoPageP() {
                                                     <span>{item.type === 'text' ? 'Conteúdo IA' : 'Arquivo PDF'}</span>
                                                 </div>
                                                 <div className="card-actions">
-                                                    {/* Botão VISUALIZAR */}
                                                     <button className="btn-icon-small view" onClick={() => setViewingItem(item)} title="Visualizar">
                                                         <span className="material-symbols-rounded">visibility</span>
                                                     </button>
-                                                    
-                                                    {/* Botão EDITAR (Só texto) */}
                                                     {item.type === 'text' && (
                                                         <button className="btn-icon-small edit" onClick={() => { setEditingItem(item); setEditTitle(item.name); setEditBody(item.content); }} title="Editar">
                                                             <span className="material-symbols-rounded">edit</span>
                                                         </button>
                                                     )}
-                                                    
-                                                    {/* Botão APAGAR */}
                                                     <button className="btn-icon-small delete" onClick={() => handleDelete(item.id)} title="Apagar">
                                                         <span className="material-symbols-rounded">delete</span>
                                                     </button>
@@ -341,7 +349,7 @@ export default function ConteudoPageP() {
         </main>
       </div>
       
-      {/* --- MODAL IA --- */}
+      {/* MODAIS IA, VIEW, EDIT - MANTIDOS IGUAIS */}
       {showIAModal && (
         <div className="modal-overlay">
           <div className="modal-box large">
@@ -358,50 +366,31 @@ export default function ConteudoPageP() {
         </div>
       )}
 
-      {/* --- MODAL VISUALIZAÇÃO (LAYOUT CORRIGIDO) --- */}
       {viewingItem && (
         <div className="modal-overlay">
           <div className="modal-box x-large">
-            
-            {/* CABEÇALHO COM O BOTÃO DE NOVA ABA */}
             <div className="modal-header">
                 <h3 style={{flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{viewingItem.name}</h3>
-                
                 <div className="header-controls">
-                    {/* Se for PDF ou Arquivo (não texto IA), mostra o botão de abrir fora */}
                     {viewingItem.type !== 'text' && (
-                        <button 
-                            className="btn-open-external-header" 
-                            onClick={() => openPdfInNewTab(viewingItem.url)}
-                            title="Abrir PDF em Nova Aba"
-                        >
-                            <span className="material-symbols-rounded">open_in_new</span>
-                            Abrir em Nova Aba
+                        <button className="btn-open-external-header" onClick={() => openPdfInNewTab(viewingItem.url)} title="Abrir PDF em Nova Aba">
+                            <span className="material-symbols-rounded">open_in_new</span> Abrir em Nova Aba
                         </button>
                     )}
-                    
                     <button onClick={() => setViewingItem(null)} className="close-btn">✕</button>
                 </div>
             </div>
-
-            {/* CORPO (OCUPA 100% DO ESPAÇO RESTANTE) */}
             <div className="modal-body view-mode">
                 {viewingItem.type === 'text' ? (
                     <div className="text-content" dangerouslySetInnerHTML={{ __html: viewingItem.content }} />
                 ) : (
-                    // IFRAME PURO OCUPANDO TUDO
-                    <iframe 
-                        src={getPdfViewerUrl(viewingItem.url)} 
-                        className="pdf-frame-full" 
-                        title="Visualizador"
-                    ></iframe>
+                    <iframe src={getPdfViewerUrl(viewingItem.url)} className="pdf-frame-full" title="Visualizador"></iframe>
                 )}
             </div>
           </div>
         </div>
       )}
 
-      {/* --- MODAL EDIÇÃO --- */}
       {editingItem && (
         <div className="modal-overlay">
           <div className="modal-box large">

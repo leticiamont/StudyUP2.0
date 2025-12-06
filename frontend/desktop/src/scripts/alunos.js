@@ -6,13 +6,12 @@ initLayout();
 
 let currentEditingId = null;
 let listaDeAlunosParaConfirmar = []; 
-let actionToConfirm = null;
+let actionToConfirm = null; 
 
-// Mapa de Anos (Reutilizando a mesma lógica das Turmas)
 const schoolYearsMap = {
   "Fundamental 1": ["1º Ano", "2º Ano", "3º Ano", "4º Ano", "5º Ano"],
   "Fundamental 2": ["6º Ano", "7º Ano", "8º Ano", "9º Ano"],
-  "Ensino Médio": ["1º Série", "2ª Série", "3ª Série"]
+  "Ensino Médio": ["1ª Série", "2ª Série", "3ª Série"]
 };
 
 document.addEventListener('componentsLoaded', () => {
@@ -22,12 +21,10 @@ document.addEventListener('componentsLoaded', () => {
   const importarAlunosBtn = document.getElementById('importarAlunosBtn');
   const csvFileInput = document.getElementById('csvFileInput');
   
-  // Filtros
   const alunosSearch = document.getElementById('alunos-search');
   const alunosFilterGrade = document.getElementById('alunos-filter-grade');
   const alunosFilterSort = document.getElementById('alunos-filter-sort');
 
-  // Modal Aluno
   const modalAluno = document.getElementById('modalAluno');
   const closeModalAlunoBtn = document.getElementById('closeModalAlunoBtn');
   const formAluno = document.getElementById('formAluno');
@@ -35,18 +32,16 @@ document.addEventListener('componentsLoaded', () => {
   const alunoModalSubmitBtn = document.getElementById('alunoModalSubmitBtn');
   const alunoModalInfo = document.getElementById('alunoModalInfo');
   
-  // Campos do Form
   const alunoNameInput = document.getElementById('aluno-name');
   const alunoDobInput = document.getElementById('aluno-dob');
-  const alunoGradeInput = document.getElementById('aluno-gradeLevel'); // Nível
-  const alunoYearInput = document.getElementById('aluno-schoolYear'); // Novo: Ano
+  const alunoGradeInput = document.getElementById('aluno-gradeLevel');
+  const alunoYearInput = document.getElementById('aluno-schoolYear');
 
-  // Modais Genéricos
   const modalStatus = document.getElementById('modalStatus');
   const statusTitle = document.getElementById('statusModalTitle');
   const statusMsg = document.getElementById('statusModalMessage');
-  const closeStatusBtn = document.getElementById('closeStatusModalBtn');
-  const okStatusBtn = document.getElementById('okStatusModalBtn');
+  const closeStatusModalBtn = document.getElementById('closeStatusModalBtn');
+  const okStatusModalBtn = document.getElementById('okStatusModalBtn');
 
   const modalPreviewCSV = document.getElementById('modalPreviewCSV');
   const previewTabelaBody = document.getElementById('previewTabelaBody');
@@ -57,7 +52,7 @@ document.addEventListener('componentsLoaded', () => {
 
   const modalConfirmacao = document.getElementById('modalConfirmacao');
   const confirmacaoMessage = document.getElementById('confirmacaoMessage');
-  const closeConfirmacaoBtn = document.getElementById('closeConfirmacaoModalBtn');
+  const closeConfirmacaoModalBtn = document.getElementById('closeConfirmacaoModalBtn');
   const cancelarConfirmacaoBtn = document.getElementById('cancelarConfirmacaoBtn');
   const confirmarAcaoBtn = document.getElementById('confirmarAcaoBtn');
 
@@ -89,11 +84,34 @@ document.addEventListener('componentsLoaded', () => {
     actionToConfirm = null;
   };
 
-  // --- Lógica de Cascata (Nível -> Ano) ---
+  // --- Ação: Resetar Senha (NOVO) ---
+  const handleResetPassword = (id, nomeAluno) => {
+    showConfirm(`Deseja resetar a senha de ${nomeAluno}?`, async () => {
+      try {
+        showStatus('Processando...', 'Gerando nova senha...');
+        
+        // Chama a API de Reset
+        const response = await api.post(`/api/users/${id}/reset-password`, {});
+        
+        // Pega a nova senha retornada pelo backend
+        const novaSenha = response.newPassword;
+        
+        showStatus('Senha Resetada!', 
+          `A nova senha provisória para ${nomeAluno} é:\n\n` +
+          `👉 ${novaSenha} 👈\n\n` +
+          `Informe ao aluno. Ele deverá trocá-la no próximo login.`
+        );
+        
+      } catch (error) {
+        showStatus('Erro', 'Falha ao resetar senha: ' + error.message);
+      }
+    });
+  };
+
+  // --- Lógica de Cascata ---
   alunoGradeInput.addEventListener('change', () => {
     const level = alunoGradeInput.value;
     alunoYearInput.innerHTML = '<option value="">Selecione...</option>';
-    
     if (level && schoolYearsMap[level]) {
       alunoYearInput.disabled = false;
       schoolYearsMap[level].forEach(year => {
@@ -110,15 +128,26 @@ document.addEventListener('componentsLoaded', () => {
     const params = new URLSearchParams({ role: 'student' });
     if (alunosSearch.value) params.append('search', alunosSearch.value);
     if (alunosFilterGrade.value) params.append('gradeLevel', alunosFilterGrade.value);
-    if (alunosFilterSort.value) params.append('sort', alunosFilterSort.value);
+    
+    // Removemos o sort do backend para evitar erro de índice e fazemos local
+    // if (alunosFilterSort.value) params.append('sort', alunosFilterSort.value);
 
     try {
-      const alunos = await api.get(`/api/users?${params.toString()}`);
+      let alunos = await api.get(`/api/users?${params.toString()}`);
       tabelaAlunosBody.innerHTML = ''; 
       if (!alunos || alunos.length === 0) {
         tabelaAlunosBody.innerHTML = '<tr><td colspan="7">Nenhum aluno encontrado.</td></tr>';
         return;
       }
+      
+      // Ordenação Local
+      const ordem = alunosFilterSort.value;
+      alunos.sort((a, b) => {
+        const nomeA = (a.displayName || '').toLowerCase();
+        const nomeB = (b.displayName || '').toLowerCase();
+        return ordem === 'asc' ? nomeA.localeCompare(nomeB) : nomeB.localeCompare(nomeA);
+      });
+
       alunos.forEach(aluno => {
         const tr = document.createElement('tr');
         const dataNasc = aluno.dateOfBirth ? new Date(aluno.dateOfBirth).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'N/A';
@@ -127,20 +156,27 @@ document.addEventListener('componentsLoaded', () => {
         const statusLabel = isActive ? '<span style="color:green;font-weight:bold;">Ativo</span>' : '<span style="color:red;font-weight:bold;">Inativo</span>';
         const btnText = isActive ? 'Desativar' : 'Ativar';
         const btnClass = isActive ? 'btn-danger' : 'btn-primary';
-
-        // Exibe "Nível - Ano" na tabela
-        const nivelAno = aluno.schoolYear ? `${aluno.gradeLevel} (${aluno.schoolYear})` : aluno.gradeLevel || 'N/A';
+        const nivelAno = aluno.schoolYear ? `${aluno.gradeLevel} (${aluno.schoolYear})` : (aluno.gradeLevel || 'N/A');
 
         tr.innerHTML = `
           <td>${aluno.displayName || 'N/A'}</td>
-          <td>${aluno.username || 'N/A'}</td>          
+          <td>${aluno.username || 'N/A'}</td>
+          <td>${statusLabel}</td>
           <td>${dataNasc}</td>
           <td>${nivelAno}</td>
           <td>${nomeTurma}</td>
-          <td>${statusLabel}</td>
           <td>
-            <button class="btn btn-secondary btn-sm edit-btn" data-id="${aluno.id}">Editar</button>
-            <button class="btn ${btnClass} btn-sm toggle-btn" data-id="${aluno.id}" data-status="${isActive}">${btnText}</button>
+            <button class="btn btn-secondary btn-sm edit-btn" data-id="${aluno.id}" title="Editar">
+                Editar
+            </button>
+            
+            <button class="btn btn-warning btn-sm reset-btn" data-id="${aluno.id}" data-nome="${aluno.displayName}" title="Resetar Senha" style="background-color: #f0ad4e; color: white; border: none; margin-left: 4px;">
+              <span class="material-symbols-rounded" style="font-size:16px;">vpn_key</span>
+            </button>
+
+            <button class="btn ${btnClass} btn-sm toggle-btn" data-id="${aluno.id}" data-status="${isActive}" style="margin-left: 4px;">
+              ${btnText}
+            </button>
           </td>
         `;
         tabelaAlunosBody.appendChild(tr);
@@ -157,7 +193,7 @@ document.addEventListener('componentsLoaded', () => {
       displayName: alunoNameInput.value,
       dateOfBirth: alunoDobInput.value,
       gradeLevel: alunoGradeInput.value,
-      schoolYear: alunoYearInput.value, // NOVO CAMPO
+      schoolYear: alunoYearInput.value,
       role: 'student'
     };
     
@@ -175,6 +211,7 @@ document.addEventListener('componentsLoaded', () => {
         dados.username = username;
         dados.email = `${username}@studyup.com`;
         dados.password = gerarSenhaProvisoria();
+        
         const res = await api.post('/api/users', dados);
         showStatus('Sucesso', `Username: ${res.username}\nSenha: ${res.password}`);
       }
@@ -183,10 +220,8 @@ document.addEventListener('componentsLoaded', () => {
     } catch (error) { showStatus('Erro', error.message); }
   };
 
-  // --- Importação CSV ---
-  const handleFileImport = async (event) => { /* ... código igual ao anterior ... */
-    // (Nota: A lógica de CSV precisa de ajuste no backend para ler a coluna 'Ano/Série', veja abaixo)
-    // Por enquanto mantemos a chamada igual
+  // --- CSV ---
+  const handleFileImport = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
     showStatus('Processando...', 'Lendo CSV...');
@@ -207,7 +242,6 @@ document.addEventListener('componentsLoaded', () => {
         preview.listaValidada.forEach(a => {
             const tr = document.createElement('tr');
             const dn = new Date(a.dateOfBirth).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-            // Mostra o Ano no preview
             tr.innerHTML = `<td>${a.displayName}</td><td>${dn}</td><td>${a.gradeLevel} - ${a.schoolYear}</td><td>${a.username}</td>`;
             previewTabelaBody.appendChild(tr);
         });
@@ -218,7 +252,7 @@ document.addEventListener('componentsLoaded', () => {
     finally { csvFileInput.value = ''; }
   };
 
-  const handleSalvarCsv = async () => { /* ... código igual ... */
+  const handleSalvarCsv = async () => {
     if (listaDeAlunosParaConfirmar.length === 0) return;
     const lista = [...listaDeAlunosParaConfirmar];
     modalPreviewCSV.style.display = 'none';
@@ -230,7 +264,7 @@ document.addEventListener('componentsLoaded', () => {
     } catch (error) { showStatus('Erro', error.message); }
   };
 
-  const handleToggleStatus = (id, status) => { /* ... código igual ... */ 
+  const handleToggleStatus = (id, status) => {
     const newStatus = !status;
     const action = newStatus ? "Ativar" : "Desativar";
     showConfirm(`Deseja ${action} este aluno?`, async () => {
@@ -265,13 +299,8 @@ document.addEventListener('componentsLoaded', () => {
       alunoNameInput.value = aluno.displayName || '';
       alunoDobInput.value = formatISODate(aluno.dateOfBirth);
       alunoGradeInput.value = aluno.gradeLevel || '';
-      
-      // Popula e seleciona o ano
       alunoGradeInput.dispatchEvent(new Event('change'));
-      setTimeout(() => {
-          alunoYearInput.value = aluno.schoolYear || '';
-      }, 50);
-
+      setTimeout(() => { alunoYearInput.value = aluno.schoolYear || ''; }, 50);
       modalAluno.style.display = 'flex';
     } catch (error) { showStatus('Erro', error.message); }
   };
@@ -282,20 +311,32 @@ document.addEventListener('componentsLoaded', () => {
   openModalAlunoBtn.addEventListener('click', openModalAlunoCriar);
   closeModalAlunoBtn.addEventListener('click', closeModalAluno);
   formAluno.addEventListener('submit', handleFormSubmit);
+
   importarAlunosBtn.addEventListener('click', () => csvFileInput.click());
   csvFileInput.addEventListener('change', handleFileImport);
+  
   if(closePreviewBtn) closePreviewBtn.addEventListener('click', () => modalPreviewCSV.style.display = 'none');
   if(cancelarPreviewBtn) cancelarPreviewBtn.addEventListener('click', () => modalPreviewCSV.style.display = 'none');
   if(salvarCsvBtn) salvarCsvBtn.addEventListener('click', handleSalvarCsv);
-  closeStatusBtn.addEventListener('click', closeStatus);
-  okStatusBtn.addEventListener('click', closeStatus);
-  closeConfirmacaoBtn.addEventListener('click', closeConfirm);
+  
+  // Modais Genéricos
+  closeStatusModalBtn.addEventListener('click', closeStatus);
+  okStatusModalBtn.addEventListener('click', closeStatus);
+  closeConfirmacaoModalBtn.addEventListener('click', closeConfirm);
   cancelarConfirmacaoBtn.addEventListener('click', closeConfirm);
-  confirmarAcaoBtn.addEventListener('click', () => { if (actionToConfirm) actionToConfirm(); closeConfirm(); });
+  confirmarAcaoBtn.addEventListener('click', () => {
+    if (actionToConfirm) actionToConfirm();
+    closeConfirm();
+  });
   
   tabelaAlunosBody.addEventListener('click', (e) => {
-    if (e.target.classList.contains('edit-btn')) openModalParaEditar(e.target.dataset.id);
-    if (e.target.classList.contains('toggle-btn')) handleToggleStatus(e.target.dataset.id, e.target.dataset.status === 'true');
+    const btn = e.target.closest('button');
+    if (!btn) return;
+
+    if (btn.classList.contains('edit-btn')) openModalParaEditar(btn.dataset.id);
+    if (btn.classList.contains('toggle-btn')) handleToggleStatus(btn.dataset.id, btn.dataset.status === 'true');
+    // LISTENER DE RESET
+    if (btn.classList.contains('reset-btn')) handleResetPassword(btn.dataset.id, btn.dataset.nome);
   });
 
   alunosSearch.addEventListener('input', loadAlunos);
